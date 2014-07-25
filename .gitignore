@@ -1,0 +1,4 @@
+testing.db
+__pycache__/
+instance/
+!instance/default.cfg
