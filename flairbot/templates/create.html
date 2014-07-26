@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Create Flair Trade{% endblock %}
+{% block content -%}
+<h2>Hi, {{ session['REDDIT_USER'] }}!</h2>
+<form action="" method="POST">
+    {{ form.hidden_tag() }}
+    {{ form.want_flair.label }}{{ form.want_flair(placeholder='Team Shree') }}
+    {{ form.trade_with.label }}{{ form.trade_with(placeholder='edk141') }}
+    <button type="submit">Create</button>
+    <span class="flair flair-specialshreeyam reddit-styles">Shree</span>
+</form>
+{% endblock %}

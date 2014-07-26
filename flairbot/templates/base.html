@@ -1,0 +1,41 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/normalize.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/foundation.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+        <link rel="stylesheet" href="{{ url_for('subreddit_css') }}">
+        <script type="text/javascript" src="{{ url_for('static', filename='js/foundation.min.js') }}"></script>
+        <title>{% block title %}MindCrack Flair Bot{% endblock %}</title>
+    </head>
+    <body>
+      <div class="row">
+        <div class="large-12 columns">
+          <h1>{{ self.title () }}</h1>
+          <hr/>
+        </div>
+      </div>
+      <div class="row">
+        <div class="large-9 columns" role="content">
+          {%- block content %}{% endblock -%}
+        </div>
+      </div>
+      <footer class="row">
+        <div class="large-12 columns">
+          <hr/>
+          <div class="row">
+            <div class="large-6 columns">
+              <p>© Ed Kellett, 2014.</p>
+            </div>
+            <div class="large-6 columns">
+              <ul class="inline-list right">
+                <li><a href="#">Link 1</a></li>
+                <li><a href="#">Link 2</a></li>
+                <li><a href="#">Link 3</a></li>
+                <li><a href="#">Link 4</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </body>
+</html>
