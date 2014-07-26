@@ -1,5 +1,9 @@
 flask
+flask-manage
+flask-migrate
 flask-script
 flask-sqlalchemy
 flask-wtf
 praw
+redis
+requests
