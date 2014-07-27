@@ -37,7 +37,7 @@ def get(user_from_session=False, moderator=False):
     return r
 
 
-@cache.cached(timeout=1800, key_prefix='reddit_stylesheet_cache')
+@cache.cached(timeout=app.config['CACHE_TIME_LONG'], key_prefix='reddit_stylesheet_cache')
 def get_stylesheet():
     tries = 3
     while tries > 0:
@@ -58,7 +58,7 @@ def get_stylesheet():
     return new.cssText
 
 
-@cache.memoize(timeout=300)
+@cache.memoize(timeout=app.config['CACHE_TIME_SHORT'])
 def _get_flair(name):
     return get(moderator=True).get_flair(app.config['REDDIT_SUBREDDIT'], name)
 
@@ -69,16 +69,16 @@ def get_flair(name, no_cache=False):
     return _get_flair(name)
 
 
-@cache.cached(timeout=1800, key_prefix='reddit_moderator_cache')
+@cache.cached(timeout=app.config['CACHE_TIME_LONG'], key_prefix='reddit_moderator_cache')
 def get_moderators():
     return {u.name for u in get().get_moderators(app.config['REDDIT_SUBREDDIT'])}
 
 
-@cache.cached(timeout=1800, key_prefix='reddit_me_cache')
+@cache.cached(timeout=app.config['CACHE_TIME_LONG'], key_prefix='reddit_me_cache')
 def get_me():
     return get(moderator=True).get_me().name
 
 
-@cache.cached(timeout=1800, key_prefix='reddit_mymod_cache')
+@cache.cached(timeout=app.config['CACHE_TIME_LONG'], key_prefix='reddit_mymod_cache')
 def get_my_moderation():
     return [s.url for s in get(moderator=True).get_my_moderation()]
