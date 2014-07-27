@@ -2,6 +2,7 @@ from flask import Flask
 from flask.ext.admin import Admin
 from flask.ext.cache import Cache
 from flask.ext.sqlalchemy import SQLAlchemy
+from flask_debugtoolbar import DebugToolbarExtension
 
 try:
     import pymysql
@@ -19,4 +20,6 @@ cache = Cache(app)
 
 db = SQLAlchemy(app)
 
-from . import admin, views
+toolbar = DebugToolbarExtension(app)
+
+from . import admin, views, utils
