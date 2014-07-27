@@ -104,7 +104,7 @@ def trade_accept(trade_id):
         return display(ok=False)
     else:
         r = reddit.get(moderator=True)
-        flair = r.get_flair(app.config['REDDIT_SUBREDDIT'], g.reddit_identity)
+        flair = reddit.get_flair(g.reddit_identity, no_cache=True)
         if flair['flair_text'] == '':
             return display(ok=False)
         if (trade.target_flair not in (None, flair['flair_text']) or
@@ -115,7 +115,7 @@ def trade_accept(trade_id):
             if accept_form.accept_id.data != trade.id:
                 abort(400)
             # one extra thing: check the creator's flair matches what we saved
-            creator_flair = r.get_flair(app.config['REDDIT_SUBREDDIT'], trade.creator)
+            creator_flair = reddit.get_flair(trade.creator, no_cache=True)
             if (creator_flair['flair_text'] != trade.creator_flair or
                     creator_flair['flair_css_class'] != trade.creator_flair_css):
                 trade.set_status('invalid')
