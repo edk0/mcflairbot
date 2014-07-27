@@ -1,78 +1,181 @@
-from flask import abort, g, redirect, render_template, request, session, url_for
+from flask import abort, flash, g, redirect, render_template, request, session, url_for
 from flask_wtf import Form
 
-from wtforms.fields import StringField
-from wtforms.validators import Length, Regexp
+from wtforms.fields import HiddenField, StringField
+from wtforms.validators import Optional, Length, Regexp
 
-import binascii
-import os
-
-from . import reddit
+from . import reddit, utils
 from .app import app, db
 from .models import Trade
 
 
 class AcceptTradeForm(Form):
-    pass
+    accept_id = HiddenField()
 
 
 class CreateTradeForm(Form):
-    want_flair = StringField('Flair you want', validators=[Length(-1,64)])
-    trade_with = StringField('Trade with this user only?', validators=[Length(3,20), Regexp(r'^[\w-]+$')])
+    want_flair = StringField('Flair you want', validators=[Optional(), Length(-1,64)])
+    trade_with = StringField('Trade with this user only?', validators=[Optional(), Length(3,20), Regexp(r'^[\w-]+$', message='Illegal characters in name')])
+
+
+class DeleteTradeForm(Form):
+    delete_id = HiddenField()
 
 
 @app.route('/')
 def index():
-    return 'Nothing to see here...'
+    return redirect(url_for('trade_new')), 303
 
 
-@app.route('/t/new', methods=('GET', 'POST'))
+@app.route('/t/new/', methods=('GET', 'POST'))
+@utils.require_authorization('identity')
 def trade_new():
     form = CreateTradeForm()
-    if 'REDDIT_USER' not in session or session.get('REDDIT_VALIDATED_FOR') != ['new']:
-        r = reddit.get()
-        return redirect(_authorize(r, ['new'], ['identity'])), 303
-    elif form.validate_on_submit():
+
+    existing = (Trade.query_valid()
+            .filter(Trade.creator == session['REDDIT_USER'])
+            .limit(1)
+            .all())
+
+    if len(existing) > 0:
+        flash('You already have a trade open. If you wish to make a different trade, delete it first.', 'alert')
+        return redirect(url_for('trade_accept', trade_id=existing[0].id)), 303
+
+    if form.validate_on_submit():
+        if form.trade_with.data != '' and form.want_flair.data != '':
+            form.want_flair.data = ''
+            form.errors['want_flair'] = [
+                "Leave this blank if you're trading with a specific user—their flair will be retrieved automatically."]
+            return render_template('create.html', form=form)
+        if form.trade_with.data.lower() == g.reddit_identity.lower():
+            form.errors['trade_with'] = ["You can't trade flair with yourself."]
+            return render_template('create.html', form=form)
+
         r = reddit.get(moderator=True)
         user = session['REDDIT_USER']
         flair = r.get_flair(app.config['REDDIT_SUBREDDIT'], user)
-        trade = Trade(creator=session['REDDIT_USER'], creator_flair=flair)
+        trade = Trade(creator=session['REDDIT_USER'],
+                      creator_flair=flair['flair_text'],
+                      creator_flair_css=flair['flair_css_class'])
+
+        if form.trade_with.data != '':
+            target = form.trade_with.data
+            target_flair = r.get_flair(app.config['REDDIT_SUBREDDIT'], target)
+            if target_flair is None:
+                form.errors['trade_with'] = ["That user doesn't seem to exist."]
+                return render_template('create.html', form=form)
+            if target_flair['flair_text'] == '':
+                form.errors['trade_with'] = [
+                        "That user doesn't have flair on /r/{}.".format(app.config['REDDIT_SUBREDDIT'])]
+                return render_template('create.html', form=form)
+            trade.target = target
+            trade.target_flair = target_flair['flair_text']
+            trade.target_flair_css = target_flair['flair_css_class']
+        elif form.want_flair.data != '':
+            trade.target_flair = form.want_flair.data
+        else:
+            flash('Please fill in exactly one of the text boxes to set up your trade.', 'alert')
+            return render_template('create.html', form=form)
         db.session.add(trade)
         db.session.commit()
         return render_template('created.html', trade=trade)
+
+    return render_template('create.html', form=form)
+
+
+@app.route('/t/<trade_id>/', methods=('GET', 'POST'))
+@utils.require_authorization('identity')
+def trade_accept(trade_id):
+    trade = Trade.by_id(trade_id, allow_invalid=True, allow_finished=True)
+    if trade is None:
+        abort(404)
+
+    accept_form = AcceptTradeForm(); accept_form.accept_id.data = trade.id
+    delete_form = DeleteTradeForm(); delete_form.delete_id.data = trade.id
+
+    def display(ok=False, you=False, **kw):
+        return render_template('accept_confirm.html', ok=ok, you=you, trade=trade,
+                                accept_form=accept_form, delete_form=delete_form, **kw)
+
+    if trade.status in ('finished', 'invalid'):
+        return display(ok=False)
+    elif trade.creator == g.reddit_identity:
+        return display(you=True)
+    elif trade.target not in (None, session['REDDIT_USER']):
+        return display(ok=False)
     else:
-        return render_template('create.html', form=form)
+        r = reddit.get(moderator=True)
+        flair = r.get_flair(app.config['REDDIT_SUBREDDIT'], g.reddit_identity)
+        if flair['flair_text'] == '':
+            return display(ok=False)
+        if (trade.target_flair not in (None, flair['flair_text']) or
+            trade.target_flair_css not in (None, flair['flair_css_class'])):
+            return display(ok=False)
+        if accept_form.validate_on_submit():
+            # make sure ids match
+            if accept_form.accept_id.data != trade.id:
+                abort(400)
+            # one extra thing: check the creator's flair matches what we saved
+            creator_flair = r.get_flair(app.config['REDDIT_SUBREDDIT'], trade.creator)
+            if (creator_flair['flair_text'] != trade.creator_flair or
+                    creator_flair['flair_css_class'] != trade.creator_flair_css):
+                trade.set_status('invalid')
+                db.session.commit()
+                return display(ok=False)
+            # actually make the trade
+            trade.target = g.reddit_identity
+            trade.target_flair = flair['flair_text']
+            trade.target_flair_css = flair['flair_css_class']
+            trade.set_status('finished')
+            db.session.commit()
+            r.set_flair_csv(app.config['REDDIT_SUBREDDIT'], [
+                {'user': g.reddit_identity,
+                 'flair_text': trade.creator_flair,
+                 'flair_css_class': trade.creator_flair_css},
+                {'user': trade.creator,
+                 'flair_text': flair['flair_text'],
+                 'flair_css_class': flair['flair_css_class']}])
+            return render_template('accept_success.html', trade=trade)
+        else:
+            your_flair = utils.render_flair(flair['flair_text'], flair['flair_css_class'])
+            return display(ok=True, your_flair=your_flair)
 
 
-@app.route('/t/accept/<trade_id>')
-def trade_accept(trade_id, accept_token=None):
+@app.route('/t/<trade_id>/delete', methods=('POST',))
+@utils.require_authorization('identity')
+def trade_delete(trade_id):
     trade = Trade.by_id(trade_id)
     if trade is None:
         abort(404)
-    if 'REDDIT_USER' not in session or session['REDDIT_VALIDATED_FOR'] != ['accept', trade.id]:
-        r = reddit.get()
-        return redirect(_authorize(r, ['accept', trade.id], ['identity'])), 303
-    elif trade.trade_with not in (None, session['REDDIT_USER']):
-        return render_template('accept_confirm.html', ok=False, trade=trade)
-    else:
-        return render_template('accept_confirm.html', ok=True, trade=trade)
+
+    delete_form = DeleteTradeForm()
+
+    if delete_form.validate_on_submit() and delete_form.delete_id.data == trade.id:
+        if g.reddit_identity != trade.creator and util.is_admin():
+            abort(403)
+        trade.set_status('deleted')
+        db.session.commit()
+        flash('Trade successfully deleted')
+        return redirect(url_for('index')), 303
+
+    abort(400)
 
 
 @app.route('/subreddit.css')
+@utils.mimetype('text/css')
 def subreddit_css():
     return reddit.get_stylesheet()
 
 
-@app.route('/system/authme')
+@app.route('/system/authme/')
+@utils.require_authorization('identity')
 def authme():
     r = reddit.get()
-    if (session.get('REDDIT_USER') not in app.config['ADMINS'] or
-        session.get('REDDIT_VALIDATED_FOR') != ['authme']):
+    if g.reddit_identity not in app.config['ADMINS']:
         session['AUTHME_STEP'] = 'begin'
-        return redirect(_authorize(r, ['authme'], ['identity']))
+        return redirect(util.authorize_url(r, ('authme',), {'identity'}))
     elif session.get('AUTHME_STEP') == 'logout_warning':
-        session['AUTHME_STEP'] = 'login_as_moderator'
-        return redirect(_authorize(r, ['authme_complete'], ['identity', 'flair', 'modflair', 'mysubreddits'], refreshable=True))
+        return redirect(_authorize(r, ['authme_complete'], list(reddit.moderator_scopes), refreshable=True))
     else:
         session['AUTHME_STEP'] = 'logout_warning'
         return '''Log out of Reddit, then back in again as the bot account.<br/>
@@ -97,37 +200,3 @@ Add the following to /instance/config.cfg:<br/>
             user=session['REDDIT_USER'],
             subs=subreddits,
             creds=session['REDDIT_CREDENTIALS'])
-
-
-def _authorize(r, state, scope, **kwargs):
-    token = binascii.hexlify(os.urandom(16)).decode('ascii')
-    state = ':'.join([token] + state)
-    session['AUTHORIZE_TOKEN'] = token
-    return r.get_authorize_url(state, scope=scope, **kwargs)
-
-
-@app.route('/oauth_callback')
-def oauth_callback():
-    r = reddit.get()
-    state = request.args.get('state', '').split(':')
-    if session.get('AUTHORIZE_TOKEN') != state.pop(0):
-        if 'AUTHORIZE_TOKEN' in session:
-            del session['AUTHORIZE_TOKEN']
-        abort(403)
-    del session['AUTHORIZE_TOKEN']
-    code = request.args.get('code', None)
-    info = r.get_access_information(code)
-    info['scope'] = list(info['scope'])
-    user = r.get_me()
-    session['REDDIT_USER'] = user.name
-    session['REDDIT_VALIDATED_FOR'] = state
-    session['REDDIT_CREDENTIALS'] = info
-    if state[0] == 'new':
-        return redirect(url_for('trade_new')), 303
-    elif state[0] == 'accept':
-        return redirect(url_for('trade_accept', trade_id=state[1])), 303
-    elif state[0] == 'authme':
-        return redirect(url_for('authme')), 303
-    elif state[0] == 'authme_complete':
-        return redirect(url_for('authme_complete')), 303
-

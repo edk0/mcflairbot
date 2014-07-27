@@ -9,7 +9,7 @@ import time
 from .app import app, cache
 
 
-moderator_scopes = {'identity', 'mysubreddits', 'modflair'}
+moderator_scopes = {'identity', 'mysubreddits', 'modflair', 'flair'}
 
 _access_expiry = -1
 _access_info = None
@@ -39,8 +39,14 @@ def get(user_from_session=False, moderator=False):
 
 @cache.cached(timeout=1800, key_prefix='reddit_stylesheet_cache')
 def get_stylesheet():
-    r = requests.get('https://ssl.reddit.com/r/{}/stylesheet.css'.format(
-            app.config['REDDIT_SUBREDDIT']))
+    tries = 3
+    while tries > 0:
+        time.sleep(3)
+        r = requests.get('https://ssl.reddit.com/r/{}/stylesheet.css'.format(
+                app.config.get('STYLE_SUBREDDIT', app.config['REDDIT_SUBREDDIT'])))
+        if r.status_code == 200:
+            break
+        tries -= 1
     sheet = cssutils.parseString(r.text)
     new = cssutils.css.CSSStyleSheet()
     for rule in sheet.cssRules.rulesOfType(cssutils.css.CSSRule.STYLE_RULE):
@@ -51,3 +57,7 @@ def get_stylesheet():
                 new.add(rule)
     return new.cssText
 
+
+@cache.cached(timeout=1800, key_prefix='reddit_moderator_cache')
+def get_moderators():
+    return {u.name for u in get().get_moderators(app.config['REDDIT_SUBREDDIT'])}

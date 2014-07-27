@@ -2,7 +2,7 @@
 {% block title %}Trade Created{% endblock %}
 {% block content -%}
 Your trade has been created successfully, and is available to accept at this link:
-<pre><a href="{{ trade.accept_url }}">{{ trade.accept_url }}</a></pre>
+<code><a href="{{ trade.accept_url(external=True) }}">{{ trade.accept_url(external=True) }}</a></code>
 <hr/>
 <a class="button" href="https://ssl.reddit.com/r/{{ config.REDDIT_SUBREDDIT }}">Back to /r/{{ config.REDDIT_SUBREDDIT }}</a>
 {% endblock %}

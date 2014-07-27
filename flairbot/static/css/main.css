@@ -2,4 +2,27 @@
   font-family: verdana, arial, helvetica, sans-serif;
   font-size: 10px;
   display: inline-block;
+  /* override /r/mindcrack hover-only flairs */
+  width: auto;
+  text-indent: 20px;
+  padding-right: 5px;
+  margin-bottom: -2px;
+}
+
+.panel.error {
+  background-color: #f04124;
+  border-color: #f04124;
+  color: #ffffff;
+}
+
+@keyframes sheen {
+    0% {background-color: #4fab4f;}
+    50% {background-color: #6FD66F;}
+    100% {background-color: #4fab4f;}
+}
+
+@-webkit-keyframes sheen {
+    0% {background-color: #4fab4f;}
+    50% {background-color: #6FD66F;}
+    100% {background-color: #4fab4f;}
 }

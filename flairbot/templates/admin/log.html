@@ -1,0 +1,33 @@
+{% extends 'admin/master.html' %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('subreddit_css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+{% endblock %}
+{% block body %}
+<table class="table table-striped table-bordered table-hover">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Creation time</th>
+            <th>Completion time</th>
+            <th>Creator</th>
+            <th>Target</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for trade in trades.items %}
+        <tr>
+            <td><a href="{{ url_for('trades-db.edit_view', id=trade.id, url=request.path) }}">DB</a></td>
+            <td>{{ trade.created }}</td>
+            <td>{{ trade.finalized }}</td>
+            <td>{{ reddit_userlink(trade.creator) }} {{ trade.render_creator}}</td>
+            <td>{% if trade.target %}{{ reddit_userlink(trade.target) }}{% else %}anyone{% endif %} {{ trade.render_target}}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<ul class="pager">
+    <li class="previous {% if not trades.has_next %}disabled{% endif %}"><a href="{{ url_for('.index', page=trades.next_num) }}">&larr; Older</a></li>
+  <li class="next {% if not trades.has_prev %}disabled{% endif %}"><a href="{{ url_for('.index', page=trades.prev_num) }}">Newer &rarr;</a></li>
+</ul>
+{% endblock %}
