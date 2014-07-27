@@ -51,16 +51,15 @@ def trade_new():
             form.errors['trade_with'] = ["You can't trade flair with yourself."]
             return render_template('create.html', form=form)
 
-        r = reddit.get(moderator=True)
         user = session['REDDIT_USER']
-        flair = r.get_flair(app.config['REDDIT_SUBREDDIT'], user)
+        flair = reddit.get_flair(user)
         trade = Trade(creator=session['REDDIT_USER'],
                       creator_flair=flair['flair_text'],
                       creator_flair_css=flair['flair_css_class'])
 
         if form.trade_with.data != '':
             target = form.trade_with.data
-            target_flair = r.get_flair(app.config['REDDIT_SUBREDDIT'], target)
+            target_flair = reddit.get_flair(target)
             if target_flair is None:
                 form.errors['trade_with'] = ["That user doesn't seem to exist."]
                 return render_template('create.html', form=form)
