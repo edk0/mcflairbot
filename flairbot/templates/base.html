@@ -36,7 +36,8 @@
             </div>
             <div class="large-6 columns">
               <ul class="inline-list right">
-                  {%- if g.reddit_identity %}<li><div>Logged in as {{ reddit_userlink(g.reddit_identity) }}</div></li>
+                  {%- if is_admin() %}<li><a href="{{ url_for('admin.index') }}">admin</a></li>{% endif %}
+                  {%- if session.REDDIT_USER %}<li><div>Logged in as {{ reddit_userlink(session.REDDIT_USER) }}</div></li>
                   <li><form action="{{ url_for('logout') }}" method="POST">{{ logout_form.hidden_tag() }}<button class="tiny secondary" type="submit">logout</button></li>{% endif %}
               </ul>
             </div>
