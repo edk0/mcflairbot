@@ -126,14 +126,16 @@ def trade_accept(trade_id):
             trade.target_flair = flair['flair_text']
             trade.target_flair_css = flair['flair_css_class']
             trade.set_status('finished')
-            db.session.commit()
             r.set_flair_csv(app.config['REDDIT_SUBREDDIT'], [
                 {'user': g.reddit_identity,
-                 'flair_text': trade.creator_flair,
-                 'flair_css_class': trade.creator_flair_css},
+                 'flair_text': creator_flair['flair_text'],
+                 'flair_css_class': creator_flair['flair_css_class']},
                 {'user': trade.creator,
                  'flair_text': flair['flair_text'],
                  'flair_css_class': flair['flair_css_class']}])
+            db.session.commit()
+            reddit.update_flair_cache(g.reddit_identity, creator_flair)
+            reddit.update_flair_cache(trade.creator, flair)
             return render_template('accept_success.html', trade=trade)
         else:
             your_flair = utils.render_flair(flair['flair_text'], flair['flair_css_class'])
