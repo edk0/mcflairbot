@@ -69,6 +69,11 @@ def get_flair(name, no_cache=False):
     return _get_flair(name)
 
 
+def update_flair_cache(name, flair):
+    key = _get_flair.make_cache_key(_get_flair.uncached, name)
+    cache.set(key, flair, timeout=_get_flair.cache_timeout)
+
+
 @cache.cached(timeout=app.config['CACHE_TIME_LONG'], key_prefix='reddit_moderator_cache')
 def get_moderators():
     return {u.name for u in get().get_moderators(app.config['REDDIT_SUBREDDIT'])}
