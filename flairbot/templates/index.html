@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}/r/{{ config.REDDIT_SUBREDDIT }} Flair Trading{% endblock %}
+{% block content -%}
+<p>You can use this website to trade your subreddit flair with other users.</p>
+<p>This is an experimental service, and may be withdrawn at any time.</p>
+<p>We will attempt to revert any trades that are explotative or fraudulent. Please
+<a href="https://ssl.reddit.com/message/compose?to=%2Fr%2F{{ config.REDDIT_SUBREDDIT }}">send modmail</a>
+with details if you believe any such trade has taken place.</p>
+<p>That said, <strong>please consider all trades final</strong>. Once accepted,
+they will not be undone if you change your mind later.</p>
+<hr/>
+<p><a href="{{ url_for('trade_new') }}">Create a trade</a> or
+<a href="https://ssl.reddit.com/r/{{ config.REDDIT_SUBREDDIT }}/">go back to /r/{{ config.REDDIT_SUBREDDIT }}</a>.</p>
+{% endblock %}

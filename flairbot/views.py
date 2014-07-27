@@ -24,7 +24,7 @@ class DeleteTradeForm(Form):
 
 @app.route('/')
 def index():
-    return redirect(url_for('trade_new')), 303
+    return render_template('index.html')
 
 
 @app.route('/t/new/', methods=('GET', 'POST'))
