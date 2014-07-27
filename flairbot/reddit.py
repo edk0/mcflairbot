@@ -58,6 +58,17 @@ def get_stylesheet():
     return new.cssText
 
 
+@cache.memoize(timeout=300)
+def _get_flair(name):
+    return get(moderator=True).get_flair(app.config['REDDIT_SUBREDDIT'], name)
+
+
+def get_flair(name, no_cache=False):
+    if no_cache:
+        cache.delete_memoized(_get_flair, name)
+    return _get_flair(name)
+
+
 @cache.cached(timeout=1800, key_prefix='reddit_moderator_cache')
 def get_moderators():
     return {u.name for u in get().get_moderators(app.config['REDDIT_SUBREDDIT'])}
