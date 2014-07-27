@@ -19,4 +19,4 @@ cache = Cache(app)
 
 db = SQLAlchemy(app)
 
-from . import views
+from . import admin, views
