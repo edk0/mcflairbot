@@ -23,7 +23,7 @@ class IndexView(AuthenticatedView):
     @expose('/')
     def index(self):
         me = reddit.get_me()
-        myflair = reddit.get(moderator=True).get_flair(app.config['REDDIT_SUBREDDIT'], me)
+        myflair = reddit.get_flair(me)
         myflair = utils.render_flair(myflair['flair_text'], myflair['flair_css_class'])
         mymod = ', '.join(sorted(reddit.get_my_moderation()))
         return self.render('admin/index.html', me=me, myflair=myflair, mymod=mymod)
