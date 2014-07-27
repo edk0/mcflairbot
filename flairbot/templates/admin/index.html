@@ -1,0 +1,9 @@
+{% extends 'admin/master.html' %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('subreddit_css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+{% endblock %}
+{% block body %}
+<p>I am {{ reddit_userlink(me) }} {{ myflair }}.</p>
+<p>I currently moderate: {{ mymod }}</p>
+{% endblock %}

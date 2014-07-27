@@ -1,8 +1,8 @@
-from flask.ext.admin import BaseView, expose
+from flask.ext.admin import Admin, BaseView, expose
 from flask.ext.admin.contrib.sqla import ModelView
 
-from . import utils
-from .app import app, admin, db
+from . import reddit, utils
+from .app import app, db
 from .models import Trade
 
 
@@ -17,6 +17,16 @@ class AuthenticatedModelView(ModelView):
 
 
 ######
+
+
+class IndexView(AuthenticatedView):
+    @expose('/')
+    def index(self):
+        me = reddit.get_me()
+        myflair = reddit.get(moderator=True).get_flair(app.config['REDDIT_SUBREDDIT'], me)
+        myflair = utils.render_flair(myflair['flair_text'], myflair['flair_css_class'])
+        mymod = ', '.join(sorted(reddit.get_my_moderation()))
+        return self.render('admin/index.html', me=me, myflair=myflair, mymod=mymod)
 
 
 class ListView(AuthenticatedView):
@@ -34,6 +44,7 @@ class ListView(AuthenticatedView):
 
 ######
 
+admin = Admin(app, index_view=IndexView('Home', None, 'admin', '/admin', 'static'))
 admin.add_view(ListView(Trade.finalized.desc(), (Trade.status == 'finished',), name='Log', category='Trades', endpoint='trades-log'))
 admin.add_view(ListView(Trade.finalized.desc(), (Trade.status == 'valid',), name='Open', category='Trades', endpoint='trades-open'))
 admin.add_view(ListView(Trade.finalized.desc(), (Trade.status != 'valid', Trade.status != 'finished'), name='Invalid/Deleted', category='Trades', endpoint='trades-deleted'))
