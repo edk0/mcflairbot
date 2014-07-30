@@ -5,5 +5,5 @@ flask-script
 flask-sqlalchemy
 flask-wtf
 praw
-redis
+redis==2.9.1
 requests
