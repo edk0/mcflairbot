@@ -1,4 +1,4 @@
-from flask import g, make_response, redirect, request, session, url_for
+from flask import abort, g, make_response, redirect, request, session, url_for
 from flask_wtf import Form
 
 from functools import wraps
