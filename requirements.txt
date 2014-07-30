@@ -7,3 +7,4 @@ flask-wtf
 praw
 redis==2.9.1
 requests
+uwsgi>=2.0
