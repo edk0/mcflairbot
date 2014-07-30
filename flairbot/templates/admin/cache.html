@@ -1,0 +1,23 @@
+{% extends 'admin/master.html' %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('subreddit_css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+{% endblock %}
+{% block body %}
+<table class="table table-striped table-bordered table-hover">
+    <thead>
+        <tr>
+            <th>Key</th>
+            <th>Value</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for key, value in mapping %}
+        <tr>
+            <td>{{ key }}</td>
+            <td>{{ repr(value) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

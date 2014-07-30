@@ -2,7 +2,7 @@ from flask.ext.admin import Admin, BaseView, expose
 from flask.ext.admin.contrib.sqla import ModelView
 
 from . import reddit, utils
-from .app import app, db
+from .app import app, cache, db
 from .models import Trade
 
 
@@ -42,6 +42,22 @@ class ListView(AuthenticatedView):
         return self.render('admin/log.html', trades=trades)
 
 
+class CacheView(AuthenticatedView):
+    @expose('/')
+    def index(self):
+        keymap = {}
+        keys = cache.cache._client.keys(cache.cache.key_prefix + '*')
+        l = len(cache.cache.key_prefix)
+        for key in keys:
+            keymap[key.decode('utf8')] = cache.get(key.decode('utf8')[l:])
+        def _repr(v):
+            if isinstance(v, dict) and 'flair_text' in v:
+                return utils.render_flair(v['flair_text'], v.get('flair_css_class', None))
+            else:
+                return repr(v)
+        return self.render('admin/cache.html', mapping=sorted(keymap.items()), repr=_repr)
+
+
 ######
 
 admin = Admin(app, index_view=IndexView('Home', None, 'admin', '/admin', 'static'))
@@ -49,3 +65,4 @@ admin.add_view(ListView(Trade.finalized.desc(), (Trade.status == 'finished',), n
 admin.add_view(ListView(Trade.finalized.desc(), (Trade.status == 'valid',), name='Open', category='Trades', endpoint='trades-open'))
 admin.add_view(ListView(Trade.finalized.desc(), (Trade.status != 'valid', Trade.status != 'finished'), name='Invalid/Deleted', category='Trades', endpoint='trades-deleted'))
 admin.add_view(AuthenticatedModelView(Trade, db.session, name='Database Model', category='Trades', endpoint='trades-db'))
+admin.add_view(CacheView('Cache', endpoint='cache'))
