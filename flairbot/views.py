@@ -166,38 +166,3 @@ def trade_delete(trade_id):
 @utils.mimetype('text/css')
 def subreddit_css():
     return reddit.get_stylesheet()
-
-
-@app.route('/system/authme/')
-@utils.require_authorization('identity')
-def authme():
-    r = reddit.get()
-    if g.reddit_identity not in app.config['ADMINS']:
-        session['AUTHME_STEP'] = 'begin'
-        return redirect(util.authorize_url(r, ('authme',), {'identity'}))
-    elif session.get('AUTHME_STEP') == 'logout_warning':
-        return redirect(_authorize(r, ['authme_complete'], list(reddit.moderator_scopes), refreshable=True))
-    else:
-        session['AUTHME_STEP'] = 'logout_warning'
-        return '''Log out of Reddit, then back in again as the bot account.<br/>
-<br/>
-<a href="">When you've done that, click here.</a>'''
-
-
-@app.route('/system/authme/complete')
-def authme_complete():
-    r = reddit.get(user_from_session=True)
-    if 'REDDIT_USER' in session and session['REDDIT_VALIDATED_FOR'] == ['authme_complete']:
-        del session['AUTHME_STEP']
-        subreddits = [sub.display_name for sub in r.get_my_moderation()]
-        if app.config['REDDIT_SUBREDDIT'] not in subreddits:
-            return 'You do not moderate /r/{}!'.format(app.config['REDDIT_SUBREDDIT'])
-        return '''OAuth2 information captured for {user}.<br/>
-<br/>
-You moderate: {subs}<br/>
-<br/>
-Add the following to /instance/config.cfg:<br/>
-<pre>REDDIT_REFRESH_TOKEN = '{creds[refresh_token]}'</pre>'''.format(
-            user=session['REDDIT_USER'],
-            subs=subreddits,
-            creds=session['REDDIT_CREDENTIALS'])

@@ -1,4 +1,5 @@
 from flask import abort, g, make_response, redirect, request, session, url_for
+from flask.ext.script import Command
 from flask_wtf import Form
 
 from functools import wraps
@@ -9,6 +10,7 @@ import hashlib
 import hmac
 import json
 import os
+import redis
 
 from . import reddit
 from .app import app
@@ -90,6 +92,25 @@ def is_admin():
     return session['REDDIT_USER'] in (app.config['ADMINS'] | reddit.get_moderators())
 
 
+class AuthCommand(Command):
+    "set up OAuth for the moderator account"
+
+    def run(self):
+        r = reddit.get()
+        p = redis.StrictRedis.from_url(app.config['REDIS_URL']).pubsub()
+        p.subscribe('flairbot_oauth')
+        print('Click the following link:')
+        print(authorize_url(r, ('oauth_dump', {}), reddit.moderator_scopes, refreshable=True))
+        for msg in p.listen():
+            if msg['type'] == 'subscribe':
+                continue
+            info = json.loads(msg['data'].decode('utf8'))
+            print('Captured OAuth information for /u/{}'.format(info['user']))
+            print('Add the following to instance/config.cfg:')
+            print('REDDIT_REFRESH_TOKEN = \'{}\''.format(info['creds']['refresh_token']))
+            break
+
+
 def authorize_url(r, state, scope, **kwargs):
     token = binascii.hexlify(os.urandom(16)).decode('ascii')
     state = json.dumps([token, list(state)])
@@ -119,3 +140,13 @@ def oauth_handler():
     except:
         returnto = url_for('index')
     return redirect(returnto), 303
+
+
+@app.route('/oauth_dump')
+@require_authorization(reddit.moderator_scopes)
+def oauth_dump():
+    p = redis.StrictRedis.from_url(app.config['REDIS_URL'])
+    info = json.dumps({'user': session['REDDIT_USER'],
+                       'creds': session['REDDIT_CREDENTIALS']})
+    p.publish('flairbot_oauth', info)
+    return 'ok'
