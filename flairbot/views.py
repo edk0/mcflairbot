@@ -16,6 +16,7 @@ class AcceptTradeForm(Form):
 class CreateTradeForm(Form):
     want_flair = StringField('Flair you want', validators=[Optional(), Length(-1,64)])
     trade_with = StringField('Trade with this user only?', validators=[Optional(), Length(3,20), Regexp(r'^[\w-]+$', message='Illegal characters in name')])
+    special_warning = HiddenField()
 
 
 class DeleteTradeForm(Form):
@@ -53,6 +54,15 @@ def trade_new():
 
         user = session['REDDIT_USER']
         flair = reddit.get_flair(user)
+        if flair is None:
+            flash("You don't seem to have flair on /r/{}.".format(app.config['REDDIT_SUBREDDIT']), 'alert')
+            return render_template('create.html', form=form)
+
+        if flair['flair_css_class'].startswith('special') and form.special_warning.data != 'yes':
+            form.special_warning.data = 'yes'
+            flash("You currently have a special flair. Remember that all trades are final—it may be very difficult to get back. If you're sure, just click 'Create' again to continue.", 'alert')
+            return render_template('create.html', form=form)
+
         trade = Trade(creator=session['REDDIT_USER'],
                       creator_flair=flair['flair_text'],
                       creator_flair_css=flair['flair_css_class'])
