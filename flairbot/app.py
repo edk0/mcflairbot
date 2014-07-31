@@ -20,4 +20,10 @@ db = SQLAlchemy(app)
 
 toolbar = DebugToolbarExtension(app)
 
+if not app.debug:
+    import logging
+    handler = logging.FileHandler('app.log')
+    handler.setLevel(logging.INFO)
+    app.logger.addHandler(handler)
+
 from . import admin, views, utils
