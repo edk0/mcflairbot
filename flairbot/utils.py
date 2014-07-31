@@ -93,7 +93,6 @@ def is_admin():
 def authorize_url(r, state, scope, **kwargs):
     token = binascii.hexlify(os.urandom(16)).decode('ascii')
     state = json.dumps([token, list(state)])
-    session['AUTHORIZE_TOKEN'] = token
     mac = hmac.new(app.secret_key, state.encode('utf8'), hashlib.sha256).hexdigest()
     return r.get_authorize_url('%s:%s' % (mac, state), scope=list(scope), **kwargs)
 
@@ -103,12 +102,6 @@ def oauth_handler():
     r = reddit.get()
     mac, obj = request.args.get('state', '').split(':', 1)
     token, state = json.loads(obj)
-    # Check token
-    if session.get('AUTHORIZE_TOKEN') != token:
-        if 'AUTHORIZE_TOKEN' in session:
-            del session['AUTHORIZE_TOKEN']
-        abort(403)
-    del session['AUTHORIZE_TOKEN']
     # Check MAC
     mac2 = hmac.new(app.secret_key, obj.encode('utf8'), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(mac, mac2):
