@@ -1,4 +1,4 @@
-from flask import abort, g, make_response, redirect, request, session, url_for
+from flask import abort, g, has_request_context, make_response, redirect, request, session, url_for
 from flask.ext.script import Command
 from flask_wtf import Form
 
@@ -11,6 +11,7 @@ import hmac
 import json
 import os
 import redis
+import time
 
 from . import reddit
 from .app import app
@@ -119,7 +120,10 @@ class AuthCommand(Command):
 
 def authorize_url(r, state, scope, **kwargs):
     token = binascii.hexlify(os.urandom(16)).decode('ascii')
-    state = json.dumps([token, list(state)])
+    remote_addr = '*'
+    if has_request_context() and request.remote_addr is not None:
+        remote_addr = request.remote_addr
+    state = json.dumps([token, time.time(), remote_addr, list(state)])
     mac = hmac.new(app.secret_key, state.encode('utf8'), hashlib.sha256).hexdigest()
     return r.get_authorize_url('%s:%s' % (mac, state), scope=list(scope), **kwargs)
 
@@ -128,10 +132,17 @@ def authorize_url(r, state, scope, **kwargs):
 def oauth_handler():
     r = reddit.get()
     mac, obj = request.args.get('state', '').split(':', 1)
-    token, state = json.loads(obj)
+    token, timestamp, addr, state = json.loads(obj)
     # Check MAC
     mac2 = hmac.new(app.secret_key, obj.encode('utf8'), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(mac, mac2):
+        abort(403)
+    # Check time and IP
+    if time.time() > timestamp + app.config['AUTHORIZATION_EXPIRY']:
+        abort(403)
+    if addr != '*' and request.remote_addr != addr:
+        print(repr(addr))
+        print(repr(request.remote_addr))
         abort(403)
     # We should be pretty secure here
     code = request.args.get('code', None)
