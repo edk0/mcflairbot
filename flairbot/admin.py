@@ -49,7 +49,8 @@ class CacheView(AuthenticatedView):
         keys = cache.cache._client.keys(cache.cache.key_prefix + '*')
         l = len(cache.cache.key_prefix)
         for key in keys:
-            keymap[key.decode('utf8')] = cache.get(key.decode('utf8')[l:])
+            key = key.decode('utf8')[l:]
+            keymap[key] = cache.get(key)
         def _repr(v):
             if isinstance(v, dict) and 'flair_text' in v:
                 return utils.render_flair(v['flair_text'], v.get('flair_css_class', None))
