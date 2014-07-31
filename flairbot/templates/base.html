@@ -37,7 +37,7 @@
               <ul class="inline-list right">
                   {%- if is_admin() %}<li><a href="{{ url_for('admin.index') }}">admin</a></li>{% endif %}
                   {%- if session.REDDIT_USER %}<li><div>Logged in as {{ reddit_userlink(session.REDDIT_USER) }}</div></li>
-                  <li><form action="{{ url_for('logout') }}" method="POST">{{ logout_form.hidden_tag() }}<button class="tiny secondary" type="submit">logout</button></li>{% endif %}
+                  <li><form action="{{ logout_url() }}" method="POST">{{ logout_form.hidden_tag() }}<button class="tiny secondary" type="submit">logout</button></li>{% endif %}
               </ul>
             </div>
           </div>

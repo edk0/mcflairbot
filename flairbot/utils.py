@@ -26,18 +26,22 @@ def context():
     def reddit_userlink(username):
         return Markup('<a href="https://pay.reddit.com/user/%s">/u/%s</a>') % (username, username)
 
+    def logout_url():
+        return url_for('logout', returnto=request.script_root[1:] + request.path)
+
     logout_form = LogoutForm()
 
-    return {'reddit_userlink': reddit_userlink, 'logout_form': logout_form, 'is_admin': is_admin}
+    return {'reddit_userlink': reddit_userlink, 'logout_form': logout_form, 'logout_url': logout_url, 'is_admin': is_admin}
 
 
 @app.route('/logout', methods=('POST',))
-def logout():
+@app.route('/logout/<path:returnto>', methods=('POST',))
+def logout(returnto=None):
     form = LogoutForm()
     if form.validate_on_submit():
         for k in list(session.keys()):
             del session[k]
-        return redirect('/'), 303
+        return redirect(('/' + returnto) if returnto is not None else url_for('index')), 303
     else:
         return 'Invalid form submission, were you clickjacked?'
 
