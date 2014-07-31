@@ -23,7 +23,7 @@ class LogoutForm(Form):
 @app.context_processor
 def context():
     def reddit_userlink(username):
-        return Markup('<a href="https://ssl.reddit.com/user/%s">/u/%s</a>') % (username, username)
+        return Markup('<a href="https://pay.reddit.com/user/%s">/u/%s</a>') % (username, username)
 
     logout_form = LogoutForm()
 

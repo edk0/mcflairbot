@@ -42,7 +42,7 @@ def get_stylesheet():
     tries = 3
     while tries > 0:
         time.sleep(3)
-        r = requests.get('https://ssl.reddit.com/r/{}/stylesheet.css'.format(
+        r = requests.get('http://www.reddit.com/r/{}/stylesheet.css'.format(
                 app.config.get('STYLE_SUBREDDIT', app.config['REDDIT_SUBREDDIT'])))
         if r.status_code == 200:
             break
