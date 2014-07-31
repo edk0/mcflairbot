@@ -1,10 +1,10 @@
 flask
-flask-manage
 flask-migrate
 flask-script
 flask-sqlalchemy
 flask-wtf
 praw
+pymysql
 redis==2.9.1
 requests
 uwsgi>=2.0
