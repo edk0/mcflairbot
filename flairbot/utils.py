@@ -62,15 +62,21 @@ def mimetype(mimetype_):
     return wrap
 
 
-def require_authorization(*scopes):
+def require_authorization(*scopes, **kw):
     if len(scopes) == 1 and (isinstance(scopes[0], list) or isinstance(scopes[0], set)):
         scopes = scopes[0]
     scopes = set(scopes)
+    failure_passthrough = kw.get('failure_passthrough', False)
     def wrap(fn):
         @wraps(fn)
         def wrapped(*a, **kw):
+            if 'REDDIT_CREDENTIALS' in session:
+                g.reddit_scopes = set(session['REDDIT_CREDENTIALS']['scope'])
             if ('REDDIT_CREDENTIALS' not in session or
-                    not set(session['REDDIT_CREDENTIALS']['scope']) >= scopes):
+                    not g.reddit_scopes >= scopes):
+                if failure_passthrough:
+                    g.reddit_identity = False
+                    return fn(*a, **kw)
                 r = reddit.get()
                 return redirect(authorize_url(r, [request.url_rule.endpoint, request.view_args], scopes)), 303
             g.reddit_identity = session['REDDIT_USER']
