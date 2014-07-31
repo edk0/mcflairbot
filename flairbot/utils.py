@@ -61,6 +61,8 @@ def mimetype(mimetype_):
 
 
 def require_authorization(*scopes):
+    if len(scopes) == 1 and (isinstance(scopes[0], list) or isinstance(scopes[0], set)):
+        scopes = scopes[0]
     scopes = set(scopes)
     def wrap(fn):
         @wraps(fn)
