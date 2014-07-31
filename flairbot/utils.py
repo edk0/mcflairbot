@@ -149,10 +149,17 @@ def oauth_handler():
 
 
 @app.route('/oauth_dump')
-@require_authorization(reddit.moderator_scopes)
+@require_authorization(reddit.moderator_scopes, failure_passthrough=True)
 def oauth_dump():
+    if g.reddit_identity is False:
+        return "you are not logged in or your authorization is not sufficient \
+to run the app. please run `python manage.py setup-auth` from the server \
+instance to get here."
+    elif g.reddit_identity not in reddit.get_moderators():
+        return "this account, {}, does not moderate /r/{}. please repeat the \
+process with another account."
     p = redis.StrictRedis.from_url(app.config['REDIS_URL'])
     info = json.dumps({'user': session['REDDIT_USER'],
                        'creds': session['REDDIT_CREDENTIALS']})
     p.publish('flairbot_oauth', info)
-    return 'ok'
+    return "authorization successful, check console"
