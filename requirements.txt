@@ -1,5 +1,8 @@
+cssutils
 flask
 flask-admin
+flask-cache
+flask-debugtoolbar
 flask-migrate
 flask-script
 flask-sqlalchemy
