@@ -19,7 +19,9 @@ class AsciiString(TypeDecorator):
         return value
 
     def process_result_value(self, value, dialect):
-        return value.decode('ascii')
+        if hasattr(value, 'decode'):
+            value = value.decode('ascii')
+        return value
 
 
 class Trade(db.Model):
