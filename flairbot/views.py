@@ -9,18 +9,15 @@ from .app import app, db
 from .models import Trade
 
 
-class AcceptTradeForm(Form):
-    accept_id = HiddenField()
+class ActionTradeForm(Form):
+    act_id = HiddenField()
+    special_warning = HiddenField()
 
 
 class CreateTradeForm(Form):
     want_flair = StringField('Flair you want', validators=[Optional(), Length(-1,64)])
     trade_with = StringField('Trade with this user only?', validators=[Optional(), Length(3,20), Regexp(r'^[\w-]+$', message='Illegal characters in name')])
     special_warning = HiddenField()
-
-
-class DeleteTradeForm(Form):
-    delete_id = HiddenField()
 
 
 @app.route('/')
@@ -92,64 +89,105 @@ def trade_new():
     return render_template('create.html', form=form)
 
 
-@app.route('/t/<trade_id>/', methods=('GET', 'POST'))
+@app.route('/t/<trade_id>/')
+@utils.require_authorization('identity', failure_passthrough=True)
+def trade_view(trade_id):
+    trade = Trade.by_id(trade_id, allow_invalid=True, allow_finished=True, allow_deleted=utils.is_admin())
+    if trade is None:
+        abort(404)
+
+    form = ActionTradeForm()
+    form.act_id.data = trade.id
+
+    ok = True
+    you = False
+    message = ''
+
+    if trade.status == 'invalid':
+        ok, message = False, "This trade is no longer valid because its creator changed their flair."
+    elif trade.status == 'finished':
+        ok, message = False, "This trade has already been completed. You can view its details below, \
+but it can't be accepted again."
+    elif trade.status == 'deleted':
+        ok, message = False, "This trade has been deleted by its creator."
+
+    if ok is False:
+        return render_template('trade_view.html', ok=False, you=you, message=message, trade=trade, form=form)
+
+    if g.reddit_identity is not None and trade.target is not None and trade.target != g.reddit_identity:
+        ok, message = False, "This trade can only be accepted by /u/{}.".format(trade.target)
+
+    if trade.creator == g.reddit_identity:
+        message = "You own this trade. You can cancel it using the button below."
+        you = True
+        ok = False
+
+    if ok and g.reddit_identity is not None:
+        flair = utils.render_flair(reddit.get_flair(g.reddit_identity))
+    else:
+        flair = None
+
+    return render_template('trade_view.html', ok=ok, you=you, your_flair=flair, message=message, trade=trade, form=form)
+
+
+@app.route('/t/<trade_id>/accept', methods=('GET', 'POST'))
 @utils.require_authorization('identity')
 def trade_accept(trade_id):
     trade = Trade.by_id(trade_id, allow_invalid=True, allow_finished=True)
     if trade is None:
         abort(404)
 
-    accept_form = AcceptTradeForm(); accept_form.accept_id.data = trade.id
-    delete_form = DeleteTradeForm(); delete_form.delete_id.data = trade.id
+    form = ActionTradeForm()
 
-    def display(ok=False, you=False, **kw):
-        return render_template('accept_confirm.html', ok=ok, you=you, trade=trade,
-                                accept_form=accept_form, delete_form=delete_form, **kw)
-
-    if trade.status in ('finished', 'invalid'):
-        return display(ok=False)
+    if trade.status != 'valid':
+        flash("This trade is no longer valid.", 'alert')
+        return redirect(url_for('trade_view', trade_id=trade_id)), 303
     elif trade.creator == g.reddit_identity:
-        return display(you=True)
-    elif trade.target not in (None, session['REDDIT_USER']):
+        flash("You can't accept your own trade.", 'alert')
+        return redirect(url_for('trade_view', trade_id=trade_id)), 303
+    elif trade.target is not None and trade.target != g.reddit_identity:
+        flash("This trade can only be accepted by /u/{}".format(trade.target), 'alert')
+        return redirect(url_for('trade_view', trade_id=trade_id)), 303
+
+    if not form.validate_on_submit():
+        return redirect(url_for('trade_view', trade_id=trade_id)), 303
+    if form.act_id.data != trade.id:
+        abort(400)
+
+    r = reddit.get(moderator=True)
+
+    flair = reddit.get_flair(g.reddit_identity, no_cache=True)
+    if flair['flair_text'] == '':
+        flash("You don't have flair on /r/{}.", 'alert')
+        return redirect(url_for('trade_view', trade_id=trade_id)), 303
+    if (trade.target_flair not in (None, flair['flair_text']) or
+        trade.target_flair_css not in (None, flair['flair_css_class'])):
+        flash("You don't meet the requirements specified by this trade.", 'alert')
+        return redirect(url_for('trade_view', trade_id=trade_id)), 303
+
+    # one extra thing: check the creator's flair matches what we saved
+    creator_flair = reddit.get_flair(trade.creator, no_cache=True)
+    if (creator_flair['flair_text'] != trade.creator_flair or
+            creator_flair['flair_css_class'] != trade.creator_flair_css):
+        trade.set_status('invalid')
+        db.session.commit()
         return display(ok=False)
-    else:
-        r = reddit.get(moderator=True)
-        flair = reddit.get_flair(g.reddit_identity, no_cache=True)
-        if flair['flair_text'] == '':
-            return display(ok=False)
-        if (trade.target_flair not in (None, flair['flair_text']) or
-            trade.target_flair_css not in (None, flair['flair_css_class'])):
-            return display(ok=False)
-        if accept_form.validate_on_submit():
-            # make sure ids match
-            if accept_form.accept_id.data != trade.id:
-                abort(400)
-            # one extra thing: check the creator's flair matches what we saved
-            creator_flair = reddit.get_flair(trade.creator, no_cache=True)
-            if (creator_flair['flair_text'] != trade.creator_flair or
-                    creator_flair['flair_css_class'] != trade.creator_flair_css):
-                trade.set_status('invalid')
-                db.session.commit()
-                return display(ok=False)
-            # actually make the trade
-            trade.target = g.reddit_identity
-            trade.target_flair = flair['flair_text']
-            trade.target_flair_css = flair['flair_css_class']
-            trade.set_status('finished')
-            r.set_flair_csv(app.config['REDDIT_SUBREDDIT'], [
-                {'user': g.reddit_identity,
-                 'flair_text': creator_flair['flair_text'],
-                 'flair_css_class': creator_flair['flair_css_class']},
-                {'user': trade.creator,
-                 'flair_text': flair['flair_text'],
-                 'flair_css_class': flair['flair_css_class']}])
-            db.session.commit()
-            reddit.update_flair_cache(g.reddit_identity, creator_flair)
-            reddit.update_flair_cache(trade.creator, flair)
-            return render_template('accept_success.html', trade=trade)
-        else:
-            your_flair = utils.render_flair(flair['flair_text'], flair['flair_css_class'])
-            return display(ok=True, your_flair=your_flair)
+    # actually make the trade
+    trade.target = g.reddit_identity
+    trade.target_flair = flair['flair_text']
+    trade.target_flair_css = flair['flair_css_class']
+    trade.set_status('finished')
+    r.set_flair_csv(app.config['REDDIT_SUBREDDIT'], [
+        {'user': g.reddit_identity,
+         'flair_text': creator_flair['flair_text'],
+         'flair_css_class': creator_flair['flair_css_class']},
+        {'user': trade.creator,
+         'flair_text': flair['flair_text'],
+         'flair_css_class': flair['flair_css_class']}])
+    db.session.commit()
+    reddit.update_flair_cache(g.reddit_identity, creator_flair)
+    reddit.update_flair_cache(trade.creator, flair)
+    return render_template('accept_success.html', trade=trade)
 
 
 @app.route('/t/<trade_id>/delete', methods=('POST',))
@@ -159,17 +197,69 @@ def trade_delete(trade_id):
     if trade is None:
         abort(404)
 
-    delete_form = DeleteTradeForm()
+    form = ActionTradeForm()
 
-    if delete_form.validate_on_submit() and delete_form.delete_id.data == trade.id:
-        if g.reddit_identity != trade.creator and util.is_admin():
+    if form.validate_on_submit() and form.act_id.data == trade.id:
+        if g.reddit_identity != trade.creator and not utils.is_admin():
             abort(403)
         trade.set_status('deleted')
         db.session.commit()
-        flash('Trade successfully deleted')
+        flash('Trade successfully deleted.')
         return redirect(url_for('index')), 303
 
     abort(400)
+
+
+@app.route('/t/<trade_id>/undelete', methods=('POST',))
+@utils.require_authorization('identity')
+def trade_undelete(trade_id):
+    trade = Trade.by_id(trade_id, allow_deleted=True)
+    if trade is None or trade.status != 'deleted':
+        abort(404)
+
+    form = ActionTradeForm()
+
+    if form.validate_on_submit() and form.act_id.data == trade.id:
+        if not utils.is_admin():
+            abort(404)
+        trade.set_status('valid')
+        db.session.commit()
+        flash('Trade successfully undeleted.')
+        return redirect(url_for('trade_view', trade_id=trade.id)), 303
+
+    abort(404)
+
+
+@app.route('/t/<trade_id>/revert', methods=('POST',))
+@utils.require_authorization('identity')
+def trade_revert(trade_id):
+    trade = Trade.by_id(trade_id, allow_finished=True)
+    if trade is None or trade.status != 'finished':
+        abort(404)
+
+    form = ActionTradeForm()
+
+    if form.validate_on_submit() and form.act_id.data == trade.id:
+        if not utils.is_admin():
+            abort(404)
+        r = reddit.get(moderator=True)
+        trade.set_status('deleted')
+        creator_flair, target_flair = (
+            {'user': trade.target,
+             'flair_text': trade.target_flair,
+             'flair_css_class': trade.target_flair_css},
+            {'user': trade.creator,
+             'flair_text': trade.creator_flair,
+             'flair_css_class': trade.creator_flair_css})
+
+        r.set_flair_csv(app.config['REDDIT_SUBREDDIT'], [creator_flair, target_flair])
+        reddit.update_flair_cache(trade.creator, creator_flair)
+        reddit.update_flair_cache(trade.target, target_flair)
+        db.session.commit()
+        flash('Trade successfully reverted.')
+        return redirect(url_for('trade_view', trade_id=trade.id)), 303
+
+    abort(404)
 
 
 @app.route('/login')

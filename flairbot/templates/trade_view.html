@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Trade Details{% endblock %}
+{% block content -%}
+{% if you or not ok -%}
+<div class="panel">{{ message }}</div>
+{%- endif -%}
+<p>
+{{ reddit_userlink(trade.creator) }} {% if trade.status == 'finished' -%}
+    traded
+{%- else -%}
+    wants to trade
+{%- endif %} their flair, {{ trade.render_creator }}, for {% if trade.target -%}
+    {{ reddit_userlink(trade.target) }}'s
+{%- else -%}
+    anyone's
+{%- endif %} {{ trade.render_target }}.
+</p>
+{% if you -%}
+<hr/>
+<form action="{{ url_for('trade_delete', trade_id=trade.id) }}" method="POST">
+    {{ form.hidden_tag() }}
+    <button class="alert" type="submit">Delete trade</button>
+</form>
+{%- endif -%}
+{%- if ok -%}
+  {%- if g.reddit_identity %}
+<p>
+  <strong>Just to be clear—</strong>your current flair is {{ your_flair }}. If you accept this trade, you will
+  <strong>lose it forever</strong> and be given {{ trade.render_creator }} instead.
+</p>
+<hr/>
+<form action="{{ url_for('trade_accept', trade_id=trade.id) }}" method="POST">
+  {{ form.hidden_tag() }}
+  <button type="submit">Accept trade</button>
+</form>
+  {%- else %}
+<p><a href="{{ login_url() }}">Log in</a> to accept this trade.</p>
+  {%- endif -%}
+{%- endif -%}
+{%- if is_admin() %}
+<hr/>
+<p>
+  Admin tools:
+</p>
+<ul class="button-group radius">
+  {%- if trade.status == 'deleted' %}
+  <li><form action="{{ url_for('trade_undelete', trade_id=trade.id) }}" method="POST">{{ form.hidden_tag() }}<button class="small alert" type="submit">undelete</button></form></li>
+  {%- else %}
+  <li><form action="{{ url_for('trade_delete', trade_id=trade.id) }}" method="POST">{{ form.hidden_tag() }}<button class="small alert" type="submit">delete</button></form></li>
+    {%- if trade.status == 'finished' %}
+  <li><form action="{{ url_for('trade_revert', trade_id=trade.id) }}" method="POST">{{ form.hidden_tag() }}<button class="small alert" type="submit">revert</button></form></li>
+    {%- endif %}
+  {%- endif %}
+{%- elif not ok and not you and trade.status == 'valid' -%}
+<hr/>
+<div class="panel">You do not meet the requirements to complete this trade.</div>
+{%- endif %}
+{% endblock %}
