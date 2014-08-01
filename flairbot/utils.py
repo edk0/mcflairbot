@@ -26,12 +26,23 @@ def context():
     def reddit_userlink(username):
         return Markup('<a href="https://pay.reddit.com/user/%s">/u/%s</a>') % (username, username)
 
+    def login_url():
+        if request.path == '/':
+            return url_for('login')
+        return url_for('login', returnto=request.path)
+
     def logout_url():
-        return url_for('logout', returnto=request.script_root[1:] + request.path)
+        if request.path == '/':
+            return url_for('logout')
+        return url_for('logout', returnto=request.path)
 
     logout_form = LogoutForm()
 
-    return {'reddit_userlink': reddit_userlink, 'logout_form': logout_form, 'logout_url': logout_url, 'is_admin': is_admin}
+    return {'reddit_userlink': reddit_userlink,
+            'logout_form': logout_form,
+            'login_url': login_url,
+            'logout_url': logout_url,
+            'is_admin': is_admin}
 
 
 def render_flair(text, css_class=None):
