@@ -34,18 +34,6 @@ def context():
     return {'reddit_userlink': reddit_userlink, 'logout_form': logout_form, 'logout_url': logout_url, 'is_admin': is_admin}
 
 
-@app.route('/logout', methods=('POST',))
-@app.route('/logout/<path:returnto>', methods=('POST',))
-def logout(returnto=None):
-    form = LogoutForm()
-    if form.validate_on_submit():
-        for k in list(session.keys()):
-            del session[k]
-        return redirect(('/' + returnto) if returnto is not None else url_for('index')), 303
-    else:
-        return 'Invalid form submission, were you clickjacked?'
-
-
 def render_flair(text, css_class=None):
     text = text or 'unknown ??'
     if css_class:

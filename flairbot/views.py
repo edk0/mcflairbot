@@ -172,6 +172,18 @@ def trade_delete(trade_id):
     abort(400)
 
 
+@app.route('/logout', methods=('POST',))
+@app.route('/logout/<path:returnto>', methods=('POST',))
+def logout(returnto=None):
+    form = LogoutForm()
+    if form.validate_on_submit():
+        for k in list(session.keys()):
+            del session[k]
+        return redirect((request.script_root + returnto) if returnto is not None else url_for('index')), 303
+    else:
+        return 'Invalid form submission, were you clickjacked?'
+
+
 @app.route('/subreddit.css')
 @utils.mimetype('text/css')
 def subreddit_css():
