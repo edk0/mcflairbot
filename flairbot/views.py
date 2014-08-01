@@ -172,6 +172,13 @@ def trade_delete(trade_id):
     abort(400)
 
 
+@app.route('/login')
+@app.route('/login/<path:returnto>')
+@utils.require_authorization('identity')
+def login(returnto=None):
+    return redirect((request.script_root + returnto) if returnto is not None else url_for('index')), 303
+
+
 @app.route('/logout', methods=('POST',))
 @app.route('/logout/<path:returnto>', methods=('POST',))
 def logout(returnto=None):
