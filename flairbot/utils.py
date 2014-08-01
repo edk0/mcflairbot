@@ -46,7 +46,10 @@ def context():
 
 
 def render_flair(text, css_class=None):
-    text = text or 'unknown ??'
+    if isinstance(text, dict):
+        css_class = text.get('flair_css_class', None)
+        text = text.get('flair_text', None)
+    text = text or 'unknown'
     if css_class:
         return Markup('<span class="flair flair-%s">%s</span>') % (css_class, text)
     else:
