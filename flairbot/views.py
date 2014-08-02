@@ -74,7 +74,7 @@ def trade_new():
                 form.errors['trade_with'] = [
                         "That user doesn't have flair on /r/{}.".format(app.config['REDDIT_SUBREDDIT'])]
                 return render_template('create.html', form=form)
-            trade.target = target
+            trade.target = target_flair['user']  # case-correct
             trade.target_flair = target_flair['flair_text']
             trade.target_flair_css = target_flair['flair_css_class']
         elif form.want_flair.data != '':
@@ -185,6 +185,8 @@ def trade_accept(trade_id):
          'flair_text': flair['flair_text'],
          'flair_css_class': flair['flair_css_class']}])
     db.session.commit()
+    creator_flair['user'] = g.reddit_identity
+    flair['user'] = trade.creator
     reddit.update_flair_cache(g.reddit_identity, creator_flair)
     reddit.update_flair_cache(trade.creator, flair)
     return render_template('accept_success.html', trade=trade)
@@ -248,7 +250,7 @@ def trade_revert(trade_id):
         r = reddit.get(moderator=True)
         trade.deleted = True
         trade.set_status('valid')
-        creator_flair, target_flair = (
+        target_flair, creator_flair = (
             {'user': trade.target,
              'flair_text': trade.target_flair,
              'flair_css_class': trade.target_flair_css},
