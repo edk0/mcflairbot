@@ -43,13 +43,13 @@
   Admin tools:
 </p>
 <ul class="button-group radius">
-  {%- if trade.status == 'deleted' %}
+  {%- if trade.deleted %}
   <li><form action="{{ url_for('trade_undelete', trade_id=trade.id) }}" method="POST">{{ form.hidden_tag() }}<button class="small alert" type="submit">undelete</button></form></li>
   {%- else %}
   <li><form action="{{ url_for('trade_delete', trade_id=trade.id) }}" method="POST">{{ form.hidden_tag() }}<button class="small alert" type="submit">delete</button></form></li>
-    {%- if trade.status == 'finished' %}
+  {%- endif %}
+  {%- if trade.status == 'finished' %}
   <li><form action="{{ url_for('trade_revert', trade_id=trade.id) }}" method="POST">{{ form.hidden_tag() }}<button class="small alert" type="submit">revert</button></form></li>
-    {%- endif %}
   {%- endif %}
 {%- elif not ok and not you and trade.status == 'valid' -%}
 <hr/>
