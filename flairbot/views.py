@@ -193,7 +193,7 @@ def trade_accept(trade_id):
 @app.route('/t/<trade_id>/delete', methods=('POST',))
 @utils.require_authorization('identity')
 def trade_delete(trade_id):
-    trade = Trade.by_id(trade_id)
+    trade = Trade.by_id(trade_id, allow_finished=utils.is_admin())
     if trade is None:
         abort(404)
 
