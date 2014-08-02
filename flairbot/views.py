@@ -205,7 +205,10 @@ def trade_delete(trade_id):
         trade.deleted = True
         db.session.commit()
         flash('Trade successfully deleted.')
-        return redirect(url_for('index')), 303
+        if utils.is_admin():
+            return redirct(url_for('trade_view', trade.id=trade.id)), 303
+        else:
+            return redirect(url_for('index')), 303
 
     abort(400)
 
