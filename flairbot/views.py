@@ -273,7 +273,7 @@ def login(returnto=None):
 @app.route('/logout', methods=('POST',))
 @app.route('/logout/<path:returnto>', methods=('POST',))
 def logout(returnto=None):
-    form = LogoutForm()
+    form = utils.LogoutForm()
     if form.validate_on_submit():
         for k in list(session.keys()):
             del session[k]
