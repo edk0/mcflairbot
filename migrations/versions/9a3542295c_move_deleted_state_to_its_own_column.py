@@ -27,7 +27,11 @@ def upgrade():
     ### end Alembic commands ###
     op.execute(trade.update().\
         where(trade.c.status == 'deleted').\
-        values({'status': 'finished', 'deleted': True})
+        values({'status': 'valid', 'deleted': True})
+        )
+    op.execute(trade.update().\
+        where(trace.c.deleted == None).\
+        values({'deleted': False})
         )
 
 
