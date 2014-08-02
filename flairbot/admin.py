@@ -1,6 +1,8 @@
 from flask.ext.admin import Admin, BaseView, expose
 from flask.ext.admin.contrib.sqla import ModelView
 
+from sqlalchemy.sql import and_, or_, not_
+
 from . import reddit, utils
 from .app import app, cache, db
 from .models import Trade
@@ -30,15 +32,15 @@ class IndexView(AuthenticatedView):
 
 
 class ListView(AuthenticatedView):
-    def __init__(self, order, filters, **kw):
+    def __init__(self, order, filter_, **kw):
         self.order = order
-        self.filters = filters
+        self.filter = filter_
         super(ListView, self).__init__(**kw)
 
     @expose('/')
     @expose('/p/<int:page>')
     def index(self, page=1):
-        trades = Trade.query.filter(*self.filters).order_by(self.order).paginate(page, 50)
+        trades = Trade.query.filter(self.filter).order_by(self.order).paginate(page, 50)
         return self.render('admin/log.html', trades=trades)
 
 
@@ -62,8 +64,8 @@ class CacheView(AuthenticatedView):
 ######
 
 admin = Admin(app, index_view=IndexView('Home', None, 'admin', '/admin', 'static'))
-admin.add_view(ListView(Trade.finalized.desc(), (Trade.status == 'finished',), name='Log', category='Trades', endpoint='trades-log'))
-admin.add_view(ListView(Trade.finalized.desc(), (Trade.status == 'valid',), name='Open', category='Trades', endpoint='trades-open'))
-admin.add_view(ListView(Trade.finalized.desc(), (Trade.status != 'valid', Trade.status != 'finished'), name='Invalid/Deleted', category='Trades', endpoint='trades-deleted'))
+admin.add_view(ListView(Trade.finalized.desc(), and_(Trade.status == 'finished', Trade.deleted == False), name='Log', category='Trades', endpoint='trades-log'))
+admin.add_view(ListView(Trade.finalized.desc(), and_(Trade.status == 'valid', Trade.deleted == False), name='Open', category='Trades', endpoint='trades-open'))
+admin.add_view(ListView(Trade.finalized.desc(), or_(Trade.deleted == True, Trade.status == 'invalid'), name='Invalid/Deleted', category='Trades', endpoint='trades-deleted'))
 admin.add_view(AuthenticatedModelView(Trade, db.session, name='Database Model', category='Trades', endpoint='trades-db'))
 admin.add_view(CacheView('Cache', endpoint='cache'))

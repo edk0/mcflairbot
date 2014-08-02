@@ -103,13 +103,13 @@ def trade_view(trade_id):
     you = False
     message = ''
 
-    if trade.status == 'invalid':
+    if trade.deleted:
+        ok, message = False, "This trade has been deleted by its creator."
+    elif trade.status == 'invalid':
         ok, message = False, "This trade is no longer valid because its creator changed their flair."
     elif trade.status == 'finished':
         ok, message = False, "This trade has already been completed. You can view its details below, \
 but it can't be accepted again."
-    elif trade.status == 'deleted':
-        ok, message = False, "This trade has been deleted by its creator."
 
     if ok is False:
         return render_template('trade_view.html', ok=False, you=you, message=message, trade=trade, form=form)
@@ -139,7 +139,7 @@ def trade_accept(trade_id):
 
     form = ActionTradeForm()
 
-    if trade.status != 'valid':
+    if trade.status != 'valid' or trade.deleted:
         flash("This trade is no longer valid.", 'alert')
         return redirect(url_for('trade_view', trade_id=trade_id)), 303
     elif trade.creator == g.reddit_identity:
@@ -202,7 +202,7 @@ def trade_delete(trade_id):
     if form.validate_on_submit() and form.act_id.data == trade.id:
         if g.reddit_identity != trade.creator and not utils.is_admin():
             abort(403)
-        trade.set_status('deleted')
+        trade.deleted = True
         db.session.commit()
         flash('Trade successfully deleted.')
         return redirect(url_for('index')), 303
@@ -222,7 +222,7 @@ def trade_undelete(trade_id):
     if form.validate_on_submit() and form.act_id.data == trade.id:
         if not utils.is_admin():
             abort(404)
-        trade.set_status('valid')
+        trade.deleted = False
         db.session.commit()
         flash('Trade successfully undeleted.')
         return redirect(url_for('trade_view', trade_id=trade.id)), 303
@@ -243,7 +243,8 @@ def trade_revert(trade_id):
         if not utils.is_admin():
             abort(404)
         r = reddit.get(moderator=True)
-        trade.set_status('deleted')
+        trade.deleted = True
+        trade.set_status('valid')
         creator_flair, target_flair = (
             {'user': trade.target,
              'flair_text': trade.target_flair,

@@ -26,7 +26,8 @@ class AsciiString(TypeDecorator):
 
 class Trade(db.Model):
     id = db.Column(AsciiString(32), primary_key=True)
-    status = db.Column(db.Enum('valid', 'invalid', 'finished', 'deleted'), default='valid')
+    status = db.Column(db.Enum('valid', 'invalid', 'finished'), default='valid')
+    deleted = db.Column(db.Boolean(), default=False)
 
     creator = db.Column(db.String(32))
     creator_flair = db.Column(db.String(256))
@@ -79,7 +80,7 @@ class Trade(db.Model):
         if not allow_finished:
             query = query.filter(cls.status != 'finished')
         if not allow_deleted:
-            query = query.filter(cls.status != 'deleted')
+            query = query.filter(cls.deleted == False)
         result = query.filter(cls.id == id_).limit(1).all()
         if len(result) == 1:
             return result[0]
