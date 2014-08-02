@@ -233,7 +233,7 @@ def trade_undelete(trade_id):
 @app.route('/t/<trade_id>/revert', methods=('POST',))
 @utils.require_authorization('identity')
 def trade_revert(trade_id):
-    trade = Trade.by_id(trade_id, allow_finished=True)
+    trade = Trade.by_id(trade_id, allow_finished=True, allow_deleted=True)
     if trade is None or trade.status != 'finished':
         abort(404)
 
