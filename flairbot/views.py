@@ -193,7 +193,7 @@ def trade_accept(trade_id):
 @app.route('/t/<trade_id>/delete', methods=('POST',))
 @utils.require_authorization('identity')
 def trade_delete(trade_id):
-    trade = Trade.by_id(trade_id, allow_finished=utils.is_admin())
+    trade = Trade.by_id(trade_id, allow_finished=utils.is_admin(), allow_invalid=utils.is_admin())
     if trade is None:
         abort(404)
 
@@ -213,7 +213,7 @@ def trade_delete(trade_id):
 @app.route('/t/<trade_id>/undelete', methods=('POST',))
 @utils.require_authorization('identity')
 def trade_undelete(trade_id):
-    trade = Trade.by_id(trade_id, allow_deleted=True)
+    trade = Trade.by_id(trade_id, allow_finished=True, allow_invalid=True, allow_deleted=True)
     if trade is None or not trade.deleted:
         abort(404)
 
