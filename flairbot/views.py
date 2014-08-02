@@ -214,7 +214,7 @@ def trade_delete(trade_id):
 @utils.require_authorization('identity')
 def trade_undelete(trade_id):
     trade = Trade.by_id(trade_id, allow_deleted=True)
-    if trade is None or trade.status != 'deleted':
+    if trade is None or not trade.deleted:
         abort(404)
 
     form = ActionTradeForm()
