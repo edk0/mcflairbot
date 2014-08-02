@@ -14,9 +14,9 @@ The app takes its configuration from `instance/config.cfg`, then `instance/defau
 former doesn't need to exist).
 
 You should create `instance/config.cfg` and set a few keys now:
-* `REDDIT\_SUBREDDIT` to the name of a test subreddit you moderate
-* `STYLE\_SUBREDDIT` to `'mindcrack'`—necessary to generate the flair stylesheet
-* `SECRET\_KEY` to something random.
+* `REDDIT_SUBREDDIT` to the name of a test subreddit you moderate
+* `STYLE_SUBREDDIT` to `'mindcrack'`—necessary to generate the flair stylesheet
+* `SECRET_KEY` to something random.
   A good way to get something random is to run `python -c 'import os;print os.urandom(24)'` and
   copy the output verbatim.
 
@@ -25,7 +25,7 @@ You should create `instance/config.cfg` and set a few keys now:
 If you're only going to be doing a bit of hacking/local testing, don't bother with a database. The
 default configuration uses SQLite - just run `python manage.py db upgrade` to get started.
 
-Set up a database of your choice - MySQL/MariaDB is easy. Make sure MySQL's `wait\_timeout` is at
+Set up a database of your choice - MySQL/MariaDB is easy. Make sure MySQL's `wait_timeout` is at
 least 2 hours (7200), although 28800 is probably more sensible.
 
 If you do use MySQL, add this line to `instance/config.cfg`:
@@ -56,8 +56,8 @@ https://ssl.reddit.com/prefs/apps/ and create an app using the form there. You c
 you like. Make sure it's set as a web app, and set the redirect URL to `http://localhost:5000/`.
 
 Once the app is created, you'll get a client ID and a secret from Reddit. Put them, and the
-redirect URL, into `instance/config.cfg`, with the keys `REDDIT\_CLIENT\_ID`,
-`REDDIT\_CLIENT\_SECRET`, and `REDDIT\_REDIRECT\_URI` respectively.
+redirect URL, into `instance/config.cfg`, with the keys `REDDIT_CLIENT_ID`,
+`REDDIT_CLIENT_SECRET`, and `REDDIT_REDIRECT_URI` respectively.
 
 #### OAuth
 
