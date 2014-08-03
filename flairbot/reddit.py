@@ -8,6 +8,7 @@ import time
 
 from .app import app, cache
 
+logger = app.logger.getChild('reddit')
 
 moderator_scopes = {'identity', 'mysubreddits', 'modflair', 'flair'}
 
@@ -63,13 +64,27 @@ def _get_flair(name):
     return get(moderator=True).get_flair(app.config['REDDIT_SUBREDDIT'], name)
 
 
+def _uncache_flair(name):
+    name = name.lower()
+    cache.delete_memoized(_get_flair, name)
+
+
 def get_flair(name, no_cache=False):
+    name = name.lower()
     if no_cache:
-        cache.delete_memoized(_get_flair, name)
+        _uncache_flair(name)
     return _get_flair(name)
 
 
 def update_flair_cache(name, flair):
+    if flair.get('user', '').lower() != name.lower():
+        # something went wrong
+        logger.warning("update_flair_cache: name in dict %r isn't equivalent to name given %r, dropping key",
+                       flair.get('user'), name)
+        _uncache_flair(name)
+        if flair.get('user'):
+            _uncache_flair(flair['user'])
+        return
     key = _get_flair.make_cache_key(_get_flair.uncached, name)
     cache.set(key, flair, timeout=_get_flair.cache_timeout)
 
