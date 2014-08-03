@@ -147,8 +147,6 @@ def oauth_handler():
     if time.time() > timestamp + app.config['AUTHORIZATION_EXPIRY']:
         abort(403)
     if addr != '*' and request.remote_addr != addr:
-        print(repr(addr))
-        print(repr(request.remote_addr))
         abort(403)
     # We should be pretty secure here
     code = request.args.get('code', None)
