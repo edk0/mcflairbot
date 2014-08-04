@@ -5,9 +5,9 @@
 {%- if top_error %}<div class="panel error">{{ top_error }}</div>{% endif %}
 <form action="" method="POST">
   {{ form.hidden_tag() }}
-  {{ form.want_flair.label }}{{ form.want_flair(class='error' if form.errors.want_flair else '', placeholder='Team Shree') }}
+  {{ form.want_flair.label }}{{ form.want_flair(class='error' if form.errors.want_flair else '', placeholder='Team Shreeyam') }}
   {%- if form.errors.want_flair %}<small class="error">{{ form.errors.want_flair[0] }}</small>{% endif %}
-  {{ form.trade_with.label }}{{ form.trade_with(class='error' if form.errors.trade_with else '', placeholder='edk141') }}
+  {{ form.trade_with.label }}{{ form.trade_with(class='error' if form.errors.trade_with else '', placeholder='Username') }}
   {%- if form.errors.trade_with %}<small class="error">{{ form.errors.trade_with[0] }}</small>{% endif %}
   <button type="submit">Create</button>
 </form>
