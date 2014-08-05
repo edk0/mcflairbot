@@ -114,7 +114,7 @@ but it can't be accepted again."
     if ok is False:
         return render_template('trade_view.html', ok=False, you=you, message=message, trade=trade, form=form)
 
-    if g.reddit_identity is not None and trade.target is not None and trade.target != g.reddit_identity:
+    if g.reddit_identity and trade.target is not None and trade.target != g.reddit_identity:
         ok, message = False, "This trade can only be accepted by /u/{}.".format(trade.target)
 
     if trade.creator == g.reddit_identity:
@@ -122,12 +122,17 @@ but it can't be accepted again."
         you = True
         ok = False
 
-    if ok and g.reddit_identity is not None:
-        flair = utils.render_flair(reddit.get_flair(g.reddit_identity))
+    if ok and g.reddit_identity:
+        flair = reddit.get_flair(g.reddit_identity)
+        if (trade.target_flair not in (None, flair['flair_text']) or
+                trade.target_flair_css not in (None, flair['flair_css_class'])):
+            ok = False
+            message = "Your current flair does not meet the requirements of this trade."
+        your_flair = utils.render_flair(flair)
     else:
-        flair = None
+        your_flair = None
 
-    return render_template('trade_view.html', ok=ok, you=you, your_flair=flair, message=message, trade=trade, form=form)
+    return render_template('trade_view.html', ok=ok, you=you, your_flair=your_flair, message=message, trade=trade, form=form)
 
 
 @app.route('/t/<trade_id>/accept', methods=('GET', 'POST'))
@@ -268,11 +273,16 @@ def trade_revert(trade_id):
     abort(404)
 
 
+@app.route('/denied/<path:returnto>')
+def auth_error(returnto):
+    return render_template('auth_error.html', link=utils.script_root() + returnto)
+
+
 @app.route('/login')
 @app.route('/login/<path:returnto>')
 @utils.require_authorization('identity')
 def login(returnto=None):
-    return redirect((request.script_root + returnto) if returnto is not None else url_for('index')), 303
+    return redirect((utils.script_root() + returnto) if returnto is not None else url_for('index')), 303
 
 
 @app.route('/logout', methods=('POST',))
@@ -282,7 +292,7 @@ def logout(returnto=None):
     if form.validate_on_submit():
         for k in list(session.keys()):
             del session[k]
-        return redirect((request.script_root + returnto) if returnto is not None else url_for('index')), 303
+        return redirect((utils.script_root() + returnto) if returnto is not None else url_for('index')), 303
     else:
         return 'Invalid form submission, were you clickjacked?'
 

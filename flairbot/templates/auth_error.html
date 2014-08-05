@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Authentication Error{% endblock %}
+{% block content -%}
+<p>You need to authenticate with Reddit to continue.</p>
+<p>If you've changed your mind, you can head back to <a href="http://www.reddit.com/r/{{ config.REDDIT_SUBREDDIT }}">/r/{{ config.REDDIT_SUBREDDIT }}</a>.</p>
+<p>Otherwise, <a href="{{ link }}">click here</a> to try again.</p>
+{% endblock %}

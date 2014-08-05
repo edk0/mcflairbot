@@ -29,12 +29,12 @@ def context():
     def login_url():
         if request.path == '/':
             return url_for('login')
-        return url_for('login', returnto=request.path)
+        return url_for('login', returnto=request.path[1:])
 
     def logout_url():
         if request.path == '/':
             return url_for('logout')
-        return url_for('logout', returnto=request.path)
+        return url_for('logout', returnto=request.path[1:])
 
     logout_form = LogoutForm()
 
@@ -43,6 +43,10 @@ def context():
             'login_url': login_url,
             'logout_url': logout_url,
             'is_admin': is_admin}
+
+
+def script_root():
+    return request.script_root + '/'
 
 
 def render_flair(text, css_class=None):
@@ -148,6 +152,11 @@ def oauth_handler():
         abort(403)
     if addr != '*' and request.remote_addr != addr:
         abort(403)
+    if request.args.get('error') == 'access_denied':
+        adapter = app.create_url_adapter(request)
+        adapter.script_name = '/'
+        returnto = adapter.build(state[0], values=state[1])[1:]
+        return redirect(url_for('auth_error', returnto=returnto)), 303
     # We should be pretty secure here
     code = request.args.get('code', None)
     info = r.get_access_information(code)
