@@ -70,7 +70,7 @@ class Trade(db.Model):
 
     @classmethod
     def query_valid(cls):
-        return cls.query.filter(cls.status == 'valid')
+        return cls.query.filter(cls.status == 'valid', cls.deleted != True)
 
     @classmethod
     def by_id(cls, id_, allow_invalid=False, allow_finished=False, allow_deleted=False):
