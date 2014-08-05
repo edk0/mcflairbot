@@ -6,4 +6,6 @@
 {% block body %}
 <p>I am {{ reddit_userlink(me) }} {{ myflair }}.</p>
 <p>I currently moderate: {{ mymod }}</p>
+<p><a href="{{ url_for('index') }}">home</a> &bull;
+<a href="http://www.reddit.com/r/{{ config.REDDIT_SUBREDDIT }}">/r/{{ config.REDDIT_SUBREDDIT }}</a></p>
 {% endblock %}
