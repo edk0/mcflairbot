@@ -53,7 +53,7 @@ class Trade(db.Model):
         self.created = datetime.utcnow()
 
     def accept_url(self, external=False):
-        return url_for('trade_accept', trade_id=self.id, _external=external)
+        return url_for('trade_view', trade_id=self.id, _external=external)
 
     def set_status(self, status):
         self.status = status
