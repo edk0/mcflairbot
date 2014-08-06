@@ -181,7 +181,7 @@ to run the app. please run `python manage.py setup-auth` from the server \
 instance to get here."
     elif g.reddit_identity not in reddit.get_moderators():
         return "this account, {}, does not moderate /r/{}. please repeat the \
-process with another account."
+process with another account.".format(g.reddit_identity, app.config['REDDIT_SUBREDDIT'])
     p = redis.StrictRedis.from_url(app.config['REDIS_URL'])
     info = json.dumps({'user': session['REDDIT_USER'],
                        'creds': session['REDDIT_CREDENTIALS']})
