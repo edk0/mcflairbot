@@ -63,6 +63,7 @@ def trade_new():
         trade = Trade(creator=session['REDDIT_USER'],
                       creator_flair=flair['flair_text'],
                       creator_flair_css=flair['flair_css_class'])
+        trade.creator_ip = request.remote_addr
 
         if form.trade_with.data != '':
             target = form.trade_with.data
@@ -181,6 +182,7 @@ def trade_accept(trade_id):
     trade.target = g.reddit_identity
     trade.target_flair = flair['flair_text']
     trade.target_flair_css = flair['flair_css_class']
+    trade.target_ip = request.remote_addr
     trade.set_status('finished')
     r.set_flair_csv(app.config['REDDIT_SUBREDDIT'], [
         {'user': g.reddit_identity,

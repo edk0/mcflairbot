@@ -40,6 +40,9 @@ class Trade(db.Model):
     created = db.Column(db.DateTime())
     finalized = db.Column(db.DateTime())
 
+    creator_ip = db.Column(db.String(64))
+    target_ip = db.Column(db.String(64))
+
     def __init__(self,
                  creator=None, creator_flair=None, creator_flair_css=None,
                  target=None, target_flair=None, target_flair_css=None):
