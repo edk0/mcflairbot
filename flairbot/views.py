@@ -37,7 +37,7 @@ def trade_new():
 
     if len(existing) > 0:
         flash('You already have a trade open. If you wish to make a different trade, delete it first.', 'alert')
-        return redirect(url_for('trade_accept', trade_id=existing[0].id)), 303
+        return redirect(url_for('trade_view', trade_id=existing[0].id)), 303
 
     if form.validate_on_submit():
         if form.trade_with.data != '' and form.want_flair.data != '':
