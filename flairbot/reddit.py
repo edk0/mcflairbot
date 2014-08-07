@@ -19,7 +19,7 @@ _access_info = None
 def get(user_from_session=False, moderator=False):
     global _access_info, _access_expiry
 
-    r = praw.Reddit('/u/mindcrack_flair_bot, by /u/edk141')
+    r = praw.Reddit('/u/mindcrack_flair_bot, by /u/edk141', disable_update_check=True)
     r.set_oauth_app_info(app.config['REDDIT_CLIENT_ID'],
                          app.config['REDDIT_CLIENT_SECRET'],
                          app.config['REDDIT_REDIRECT_URI'])
