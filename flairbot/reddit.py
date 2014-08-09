@@ -16,7 +16,7 @@ _access_expiry = -1
 _access_info = None
 
 
-def get(user_from_session=False, moderator=False):
+def get(user_from_session=False, moderator=False, refresh_token=None):
     global _access_info, _access_expiry
 
     r = praw.Reddit('/u/mindcrack_flair_bot, by /u/edk141', disable_update_check=True)
@@ -32,7 +32,9 @@ def get(user_from_session=False, moderator=False):
         if _access_info is not None and _access_expiry > time.time():
             r.set_access_credentials(moderator_scopes, *_access_info)
         else:
-            info = r.refresh_access_information(app.config['REDDIT_REFRESH_TOKEN'])
+            if refresh_token is None:
+                refresh_token = app.config['REDDIT_REFRESH_TOKEN']
+            info = r.refresh_access_information(refresh_token)
             _access_info = (info['access_token'], info['refresh_token'])
             _access_expiry = time.time() + 3300  # give ourselves a 5-minute margin
     return r
