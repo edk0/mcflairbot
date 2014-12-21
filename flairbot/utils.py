@@ -2,14 +2,20 @@ from flask import abort, g, has_request_context, make_response, redirect, reques
 from flask.ext.script import Command
 from flask_wtf import Form
 
+from collections import Counter
 from functools import wraps
 from markupsafe import Markup
 
+from sqlalchemy import and_, or_
+
 import binascii
+import csv
+import datetime
 import hashlib
 import hmac
 import json
 import os
+import praw
 import redis
 import time
 
@@ -187,3 +193,71 @@ process with another account.".format(g.reddit_identity, app.config['REDDIT_SUBR
                        'creds': session['REDDIT_CREDENTIALS']})
     p.publish('flairbot_oauth', info)
     return "authorization successful, check console"
+
+@praw.decorators.restrict_access('flair')
+def get_flair_selector(r, subreddit):
+    r.config.API_PATHS['flairselector'] = 'r/%s/api/flairselector'
+    return r.request_json(r.config['flairselector'] % subreddit, data=True)
+
+class StatsCommand(Command):
+    """compute flair stats"""
+
+    def run(self):
+        from .models import Trade
+        r = reddit.get(moderator=True)
+        active = Counter()
+        authors = set()
+        stop = time.time() - 2592000
+        dstop = datetime.datetime.utcfromtimestamp(stop)
+        print('# reading submissions')
+        n = 0
+        m = 0
+        for s in r.get_subreddit(app.config['REDDIT_SUBREDDIT']).get_new(limit=None):
+            if s.created_utc < stop:
+                break
+            n += 1
+            s.replace_more_comments(limit=None, threshold=0)
+            flat = praw.helpers.flatten_tree(s.comments)
+            for c in flat:
+                m += 1
+                if c.author is None:
+                    continue
+                if c.author.name in authors:
+                    continue
+                authors.add(c.author.name)
+                active[(c.author_flair_text, c.author_flair_css_class)] += 1
+            if s.author.name in authors:
+                continue
+            authors.add(s.author.name)
+            active[(s.author_flair_text, s.author_flair_css_class)] += 1
+        print('({} submissions, {} comments)'.format(n, m))
+        print('# reading flair selector')
+        r = reddit.get(moderator=True)
+        selector = get_flair_selector(r, app.config['REDDIT_SUBREDDIT'])
+        available = set()
+        for f in selector['choices']:
+            available.add((f['flair_text'], f['flair_css_class'][6:]))
+        frequency = Counter()
+        print('# reading user flair list')
+        r = reddit.get(moderator=True)
+        for flair in r.get_flair_list(app.config['REDDIT_SUBREDDIT'], limit=None):
+            frequency[(flair['flair_text'], flair['flair_css_class'])] += 1
+        print("# smokin' and writin'")
+        with open('stats.csv', 'w') as f:
+            wr = csv.writer(f)
+            wr.writerow(['flair text', 'css class', 'enabled', 'total count', 'active count', 'trade activity'])
+            for flair in sorted(frequency.keys(), key=lambda k: (-frequency[k], k[0])):
+                if flair[0] is None or flair[1] is None or flair[0] == '':
+                    continue
+                at = Trade.query\
+                    .filter(
+                        Trade.status == 'finished',
+                        Trade.finalized > stop,
+                        or_(
+                            and_(Trade.creator_flair == flair[0],
+                                 Trade.creator_flair_css == flair[1]),
+                            and_(Trade.target_flair == flair[0],
+                                 Trade.target_flair_css == flair[1])))\
+                    .count()
+                av = 'YES' if flair in available else 'NO'
+                wr.writerow([flair[0], flair[1], av, frequency[flair], active[flair], at])
