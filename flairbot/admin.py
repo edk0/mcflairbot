@@ -65,7 +65,7 @@ class CacheView(AuthenticatedView):
 
 admin = Admin(app, index_view=IndexView('Home', None, 'admin', '/admin', 'static'))
 admin.add_view(ListView(Trade.finalized.desc(), and_(Trade.status == 'finished', Trade.deleted == False), name='Log', category='Trades', endpoint='trades-log'))
-admin.add_view(ListView(Trade.finalized.desc(), and_(Trade.status == 'valid', Trade.deleted == False), name='Open', category='Trades', endpoint='trades-open'))
-admin.add_view(ListView(Trade.finalized.desc(), or_(Trade.deleted == True, Trade.status == 'invalid'), name='Invalid/Deleted', category='Trades', endpoint='trades-deleted'))
+admin.add_view(ListView(Trade.created.desc(), and_(Trade.status == 'valid', Trade.deleted == False), name='Open', category='Trades', endpoint='trades-open'))
+admin.add_view(ListView(Trade.created.desc(), or_(Trade.deleted == True, Trade.status == 'invalid'), name='Invalid/Deleted', category='Trades', endpoint='trades-deleted'))
 admin.add_view(AuthenticatedModelView(Trade, db.session, name='Database Model', category='Trades', endpoint='trades-db'))
 admin.add_view(CacheView('Cache', endpoint='cache'))
