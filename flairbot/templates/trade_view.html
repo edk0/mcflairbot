@@ -5,7 +5,14 @@
 <div class="panel">{{ message }}</div>
 {%- endif -%}
 <p>
-{{ reddit_userlink(trade.creator) }} {% if trade.status == 'finished' -%}
+{{ reddit_userlink(trade.creator) }} {% if trade.giveaway_count is not none -%}
+{% if trade.status == 'finished' -%}
+    gave away
+{%- else -%}
+    wants to give away {{ trade.giveaway_count }} of
+{%- endif %} the flair {{ trade.render_creator }}
+{%- else -%}
+{%- if trade.status == 'finished' -%}
     traded
 {%- else -%}
     wants to trade
@@ -13,7 +20,7 @@
     {{ reddit_userlink(trade.target) }}'s
 {%- else -%}
     anyone's
-{%- endif %} {{ trade.render_target }}.
+{%- endif %} {{ trade.render_target }}{% endif %}.
 </p>
 {% if you -%}
 <hr/>

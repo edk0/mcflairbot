@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Trade Completed{% endblock %}
+{% block content -%}
+<p>
+  You've successfully claimed {{ trade.render_creator }} from {{ reddit_userlink(trade.creator) }}'s giveaway.
+  Enjoy!
+</p>
+{% endblock %}

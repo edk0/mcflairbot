@@ -4,6 +4,8 @@ from flask_wtf import Form
 from wtforms.fields import HiddenField, StringField
 from wtforms.validators import Optional, Length, Regexp
 
+from sqlalchemy.exc import IntegrityError
+
 from . import reddit, utils
 from .app import app, db
 from .models import Trade
@@ -139,64 +141,90 @@ but it can't be accepted again."
 @app.route('/t/<trade_id>/accept', methods=('GET', 'POST'))
 @utils.require_authorization('identity')
 def trade_accept(trade_id):
-    trade = Trade.by_id(trade_id, allow_invalid=True, allow_finished=True)
+    r = reddit.get(moderator=True)
+
+    trade = Trade.by_id(trade_id, allow_invalid=True, allow_finished=True, for_update=True)
     if trade is None:
         abort(404)
 
-    form = ActionTradeForm()
+    try:
+        form = ActionTradeForm()
 
-    if trade.status != 'valid' or trade.deleted:
-        flash("This trade is no longer valid.", 'alert')
-        return redirect(url_for('trade_view', trade_id=trade_id)), 303
-    elif trade.creator == g.reddit_identity:
-        flash("You can't accept your own trade.", 'alert')
-        return redirect(url_for('trade_view', trade_id=trade_id)), 303
-    elif trade.target is not None and trade.target != g.reddit_identity:
-        flash("This trade can only be accepted by /u/{}".format(trade.target), 'alert')
-        return redirect(url_for('trade_view', trade_id=trade_id)), 303
+        if trade.status not in ('valid', 'giveaway') or trade.deleted:
+            flash("This trade is no longer valid.", 'alert')
+            return redirect(url_for('trade_view', trade_id=trade_id)), 303
+        elif trade.creator == g.reddit_identity:
+            flash("You can't accept your own trade.", 'alert')
+            return redirect(url_for('trade_view', trade_id=trade_id)), 303
+        elif trade.target is not None and trade.target != g.reddit_identity:
+            flash("This trade can only be accepted by /u/{}".format(trade.target), 'alert')
+            return redirect(url_for('trade_view', trade_id=trade_id)), 303
 
-    if not form.validate_on_submit():
-        return redirect(url_for('trade_view', trade_id=trade_id)), 303
-    if form.act_id.data != trade.id:
-        abort(400)
+        if not form.validate_on_submit():
+            return redirect(url_for('trade_view', trade_id=trade_id)), 303
+        if form.act_id.data != trade.id:
+            abort(400)
 
-    r = reddit.get(moderator=True)
+        if trade.status != 'giveaway':
+            flair = reddit.get_flair(g.reddit_identity, no_cache=True)
+            if flair['flair_text'] == '':
+                flash("You don't have flair on /r/{}.", 'alert')
+                return redirect(url_for('trade_view', trade_id=trade_id)), 303
+            if (trade.target_flair not in (None, flair['flair_text']) or
+                trade.target_flair_css not in (None, flair['flair_css_class'])):
+                flash("You don't meet the requirements specified by this trade.", 'alert')
+                return redirect(url_for('trade_view', trade_id=trade_id)), 303
+    finally:
+        db.session.rollback()
 
-    flair = reddit.get_flair(g.reddit_identity, no_cache=True)
-    if flair['flair_text'] == '':
-        flash("You don't have flair on /r/{}.", 'alert')
-        return redirect(url_for('trade_view', trade_id=trade_id)), 303
-    if (trade.target_flair not in (None, flair['flair_text']) or
-        trade.target_flair_css not in (None, flair['flair_css_class'])):
-        flash("You don't meet the requirements specified by this trade.", 'alert')
-        return redirect(url_for('trade_view', trade_id=trade_id)), 303
+    if trade.status != 'giveaway':
+        try:
+            # one extra thing: check the creator's flair matches what we saved
+            creator_flair = reddit.get_flair(trade.creator, no_cache=True)
+            if (creator_flair['flair_text'] != trade.creator_flair or
+                    creator_flair['flair_css_class'] != trade.creator_flair_css):
+                trade.set_status('invalid')
+                db.session.commit()
+                return display(ok=False)
+        except IntegrityError:
+            db.session.rollback()
 
-    # one extra thing: check the creator's flair matches what we saved
-    creator_flair = reddit.get_flair(trade.creator, no_cache=True)
-    if (creator_flair['flair_text'] != trade.creator_flair or
-            creator_flair['flair_css_class'] != trade.creator_flair_css):
-        trade.set_status('invalid')
-        db.session.commit()
-        return display(ok=False)
-    # actually make the trade
-    trade.target = g.reddit_identity
-    trade.target_flair = flair['flair_text']
-    trade.target_flair_css = flair['flair_css_class']
-    trade.target_ip = request.remote_addr
-    trade.set_status('finished')
-    r.set_flair_csv(app.config['REDDIT_SUBREDDIT'], [
-        {'user': g.reddit_identity,
-         'flair_text': creator_flair['flair_text'],
-         'flair_css_class': creator_flair['flair_css_class']},
-        {'user': trade.creator,
-         'flair_text': flair['flair_text'],
-         'flair_css_class': flair['flair_css_class']}])
-    db.session.commit()
-    creator_flair['user'] = g.reddit_identity
-    flair['user'] = trade.creator
-    reddit.update_flair_cache(g.reddit_identity, creator_flair)
-    reddit.update_flair_cache(trade.creator, flair)
-    return render_template('accept_success.html', trade=trade)
+    try:
+        if trade.status != 'giveaway':
+            # actually make the trade
+            trade.target = g.reddit_identity
+            trade.target_flair = flair['flair_text']
+            trade.target_flair_css = flair['flair_css_class']
+            trade.target_ip = request.remote_addr
+            trade.set_status('finished')
+            r.set_flair_csv(app.config['REDDIT_SUBREDDIT'], [
+                {'user': g.reddit_identity,
+                 'flair_text': creator_flair['flair_text'],
+                 'flair_css_class': creator_flair['flair_css_class']},
+                {'user': trade.creator,
+                 'flair_text': flair['flair_text'],
+                 'flair_css_class': flair['flair_css_class']}])
+            db.session.commit()
+            creator_flair['user'] = g.reddit_identity
+            flair['user'] = trade.creator
+            reddit.update_flair_cache(g.reddit_identity, creator_flair)
+            reddit.update_flair_cache(trade.creator, flair)
+            return render_template('accept_success.html', trade=trade)
+        else:
+            trade.giveaway_count -= 1
+            if trade.giveaway_count <= 0:
+                trade.set_status('finished')
+            new_flair = {
+                'user': g.reddit_identity,
+                'flair_text': trade.creator_flair,
+                'flair_css_class': trade.creator_flair_css
+                }
+            r.set_flair_csv(app.config['REDDIT_SUBREDDIT'], [new_flair])
+            db.session.commit()
+            reddit.update_flair_cache(g.reddit_identity, new_flair)
+            return render_template('giveaway_success.html', trade=trade)
+    except IntegrityError:
+        db.session.rollback()
 
 
 @app.route('/t/<trade_id>/delete', methods=('POST',))
