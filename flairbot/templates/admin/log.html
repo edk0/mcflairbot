@@ -17,7 +17,8 @@
     <tbody>
         {% for trade in trades.items %}
         <tr>
-            <td><a href="{{ url_for('trades-db.edit_view', id=trade.id, url=request.script_root+request.path) }}">DB</a></td>
+            <td><a href="{{ url_for('trades-db.edit_view', id=trade.id, url=request.script_root+request.path) }}">DB</a> &bull;
+                <a href="{{ url_for('trade_view', trade_id=trade.id) }}">Pub</a></td>
             <td>{{ trade.created }}</td>
             <td>{{ trade.finalized }}</td>
             <td>{{ reddit_userlink(trade.creator) }} {{ trade.render_creator}}</td>
