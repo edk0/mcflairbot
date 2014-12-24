@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from . import reddit, utils
 from .app import app, db
-from .models import Trade
+from .models import GiveawayLog, Trade
 
 
 class ActionTradeForm(Form):
@@ -165,8 +165,8 @@ def trade_accept(trade_id):
         if form.act_id.data != trade.id:
             abort(400)
 
+        flair = reddit.get_flair(g.reddit_identity, no_cache=True)
         if trade.status != 'giveaway':
-            flair = reddit.get_flair(g.reddit_identity, no_cache=True)
             if flair['flair_text'] == '':
                 flash("You don't have flair on /r/{}.", 'alert')
                 return redirect(url_for('trade_view', trade_id=trade_id)), 303
@@ -174,6 +174,10 @@ def trade_accept(trade_id):
                 trade.target_flair_css not in (None, flair['flair_css_class'])):
                 flash("You don't meet the requirements specified by this trade.", 'alert')
                 return redirect(url_for('trade_view', trade_id=trade_id)), 303
+        else:
+            if trade.target_flair == flair['flair_text'] and trade.target_flair_css == flair['flair_css_class']:
+                flash("You already have the offered flair.", 'alert')
+                return redirect(url_for('trade_view', trade_id=trade_id))
     finally:
         db.session.rollback()
 
@@ -220,11 +224,16 @@ def trade_accept(trade_id):
                 'flair_css_class': trade.creator_flair_css
                 }
             r.set_flair_csv(app.config['REDDIT_SUBREDDIT'], [new_flair])
+            logent = GiveawayLog(trade, g.reddit_identity, flair['flair_text'], flair['flair_css_class'], request.remote_addr)
+            db.session.add(logent)
             db.session.commit()
             reddit.update_flair_cache(g.reddit_identity, new_flair)
             return render_template('giveaway_success.html', trade=trade)
     except IntegrityError:
         db.session.rollback()
+    except BaseException:
+        db.session.rollback()
+        raise
 
 
 @app.route('/t/<trade_id>/delete', methods=('POST',))

@@ -1,7 +1,8 @@
-from flask import url_for
+from flask import request, url_for
 from datetime import datetime
 from markupsafe import Markup
 from sqlalchemy.types import TypeDecorator, String
+from sqlalchemy.orm import relationship
 
 import binascii
 import os
@@ -97,3 +98,27 @@ class Trade(db.Model):
     def make_accept_token(self):
         self.accept_token = binascii.hexlify(os.urandom(16))
 
+    def __html__(self):
+        return Markup('<a href="%s">(trade)</a>') % url_for('trades-db.edit_view', id=self.id, url=request.script_root+request.path)
+
+
+class GiveawayLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    trade_id = db.Column(AsciiString(32), db.ForeignKey('trade.id'))
+    trade = relationship('Trade')
+
+    target = db.Column(db.String(32))
+    target_flair = db.Column(db.String(256))
+    target_flair_css = db.Column(db.String(64))
+    target_ip = db.Column(db.String(64))
+
+    time = db.Column(db.DateTime())
+
+    def __init__(self, trade, target, target_flair, target_flair_css, target_ip):
+        self.trade = trade
+        self.target = target
+        self.target_flair = target_flair
+        self.target_flair_css = target_flair_css
+        self.target_ip = target_ip
+        self.time = datetime.utcnow()
