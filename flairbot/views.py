@@ -175,7 +175,7 @@ def trade_accept(trade_id):
                 flash("You don't meet the requirements specified by this trade.", 'alert')
                 return redirect(url_for('trade_view', trade_id=trade_id)), 303
         else:
-            if trade.target_flair == flair['flair_text'] and trade.target_flair_css == flair['flair_css_class']:
+            if trade.creator_flair == flair['flair_text'] and trade.creator_flair_css == flair['flair_css_class']:
                 flash("You already have the offered flair.", 'alert')
                 return redirect(url_for('trade_view', trade_id=trade_id))
     finally:
