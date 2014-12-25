@@ -61,6 +61,15 @@ class CacheView(AuthenticatedView):
         return self.render('admin/cache.html', mapping=sorted(keymap.items()), repr=_repr)
 
 
+class GiveawayLogView(AuthenticatedModelView):
+    column_auto_select_related = True
+    column_list = ('trade', 'trade.creator', 'trade.creator_flair', 'trade.creator_flair_css', 'target', 'target_flair', 'target_flair_css', 'target_ip')
+    column_sortable_list = ('trade.creator', 'trade.creator_flair', 'trade.creator_flair_css', 'target', 'target_flair', 'target_flair_css', 'target_ip')
+    column_searchable_list = (Trade.creator, Trade.creator_flair, Trade.creator_flair_css, GiveawayLog.target, GiveawayLog.target_flair, GiveawayLog.target_flair_css, GiveawayLog.target_ip)
+    can_create = False
+    can_edit = False
+
+
 ######
 
 admin = Admin(app, index_view=IndexView('Home', None, 'admin', '/admin', 'static'))
@@ -68,5 +77,5 @@ admin.add_view(ListView(Trade.finalized.desc(), and_(Trade.status == 'finished',
 admin.add_view(ListView(Trade.created.desc(), and_(or_(Trade.status == 'valid', Trade.status == 'giveaway'), Trade.deleted == False), name='Open', category='Trades', endpoint='trades-open'))
 admin.add_view(ListView(Trade.created.desc(), or_(Trade.deleted == True, Trade.status == 'invalid'), name='Invalid/Deleted', category='Trades', endpoint='trades-deleted'))
 admin.add_view(AuthenticatedModelView(Trade, db.session, name='Database Model', category='Trades', endpoint='trades-db'))
-admin.add_view(AuthenticatedModelView(GiveawayLog, db.session, name='Giveaways', endpoint='giveaway-db'))
+admin.add_view(GiveawayLogView(GiveawayLog, db.session, name='Giveaways', endpoint='giveaway-db'))
 admin.add_view(CacheView('Cache', endpoint='cache'))
