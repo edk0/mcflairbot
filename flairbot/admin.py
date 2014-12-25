@@ -64,7 +64,7 @@ class CacheView(AuthenticatedView):
 class GiveawayLogView(AuthenticatedModelView):
     column_auto_select_related = True
     column_list = ('trade', 'trade.creator', 'trade.creator_flair', 'trade.creator_flair_css', 'target', 'target_flair', 'target_flair_css', 'target_ip')
-    column_sortable_list = ('trade.creator', 'trade.creator_flair', 'trade.creator_flair_css', 'target', 'target_flair', 'target_flair_css', 'target_ip')
+    column_sortable_list = ('trade.creator', 'trade.creator_flair', 'trade.creator_flair_css', ('target', GiveawayLog.target), ('target_flair', GiveawayLog.target_flair), ('target_flair_css', GiveawayLog.target_flair_css), ('target_ip', GiveawayLog.target_ip))
     column_searchable_list = (Trade.creator, Trade.creator_flair, Trade.creator_flair_css, GiveawayLog.target, GiveawayLog.target_flair, GiveawayLog.target_flair_css, GiveawayLog.target_ip)
     can_create = False
     can_edit = False
